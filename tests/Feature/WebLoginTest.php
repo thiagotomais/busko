@@ -20,7 +20,6 @@ class WebLoginTest extends TestCase
             '_token' => $token,
             'email' => 'thiago@tomais',
             'password' => 'thiago@tomais',
-            'type' => 'driver',
         ]);
 
         $response->assertRedirect(route('portal.dashboard'));
@@ -42,7 +41,6 @@ class WebLoginTest extends TestCase
                 '_token' => $token,
                 'email' => 'thiago@tomais',
                 'password' => 'thiago@tomais',
-                'type' => 'driver',
             ]);
 
         $response->assertRedirect(route('portal.login'));
@@ -60,7 +58,6 @@ class WebLoginTest extends TestCase
             '_token' => $token,
             'email' => 'admin@busko.com',
             'password' => 'admin@busko',
-            'type' => 'admin',
         ]);
 
         $response->assertRedirect(route('portal.dashboard'));
@@ -82,7 +79,6 @@ class WebLoginTest extends TestCase
                 '_token' => $token,
                 'email' => 'thiago@tomais',
                 'password' => 'thiago@tomais',
-                'type' => 'driver',
             ]);
 
         $response->assertRedirect(route('portal.login'));

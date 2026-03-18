@@ -25,7 +25,6 @@ class LoginRequest extends FormRequest
         return [
             'email' => 'required|email',
             'password' => 'required|string|min:8',
-            'type' => 'required|in:driver,guardian,admin',
         ];
     }
 
@@ -41,8 +40,6 @@ class LoginRequest extends FormRequest
             'email.email' => 'Email must be a valid email address',
             'password.required' => 'Password is required',
             'password.min' => 'Password must be at least 8 characters',
-            'type.required' => 'User type is required',
-            'type.in' => 'User type must be one of: driver, guardian, admin',
         ];
     }
 }

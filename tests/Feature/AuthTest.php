@@ -78,7 +78,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/v1/auth/login', [
             'email' => 'pedro@example.com',
             'password' => 'password123',
-            'type' => 'driver',
         ]);
 
         $response->assertStatus(200);
@@ -106,7 +105,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/v1/auth/login', [
             'email' => 'paulo@example.com',
             'password' => 'wrongpassword',
-            'type' => 'driver',
         ]);
 
         $response->assertStatus(422);
@@ -190,7 +188,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/v1/auth/login', [
             'email' => 'inativa@example.com',
             'password' => 'password123',
-            'type' => 'driver',
         ]);
 
         $response->assertStatus(422);
@@ -203,7 +200,6 @@ class AuthTest extends TestCase
         $login = $this->postJson('/api/v1/auth/login', [
             'email' => 'admin@busko.com',
             'password' => 'admin@busko',
-            'type' => 'admin',
         ]);
 
         $login->assertStatus(200);

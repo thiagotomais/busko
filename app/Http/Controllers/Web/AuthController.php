@@ -34,10 +34,15 @@ class AuthController extends Controller
         $validated = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
-            'type' => 'required|in:driver,guardian,admin',
         ]);
 
-        $userType = UserType::from($validated['type']);
+        $userType = $this->resolveUserTypeByEmail($validated['email']);
+        if (!$userType) {
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => 'As credenciais fornecidas estão incorretas.']);
+        }
+
         if ($userType === UserType::ADMIN) {
             $result = $this->adminLogin($validated['email'], $validated['password']);
         } else {
@@ -60,8 +65,26 @@ class AuthController extends Controller
         }
 
         return back()
-            ->withInput($request->only('email', 'type'))
+            ->withInput($request->only('email'))
             ->withErrors(['email' => 'As credenciais fornecidas estão incorretas.']);
+    }
+
+    /**
+     * Resolve account profile type by email.
+     */
+    private function resolveUserTypeByEmail(string $email): ?UserType
+    {
+        $user = User::query()->where('email', $email)->first(['id', 'type']);
+
+        if (!$user) {
+            return null;
+        }
+
+        if ($user->type instanceof UserType) {
+            return $user->type;
+        }
+
+        return is_string($user->type) ? UserType::tryFrom($user->type) : null;
     }
 
     /**

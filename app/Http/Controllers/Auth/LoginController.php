@@ -29,7 +29,13 @@ class LoginController extends Controller
     {
         $validated = $request->validated();
 
-        $userType = UserType::from($validated['type']);
+        $userType = $this->resolveUserTypeByEmail($validated['email']);
+        if (!$userType) {
+            throw ValidationException::withMessages([
+                'email' => 'Invalid credentials',
+            ]);
+        }
+
         if ($userType === UserType::ADMIN) {
             $result = $this->adminLogin($validated['email'], $validated['password']);
         } else {
@@ -99,6 +105,24 @@ class LoginController extends Controller
             'token' => $this->tokenService->createToken($user),
             'tenant_id' => $user->tenant_id,
         ];
+    }
+
+    /**
+     * Resolve account profile type by email.
+     */
+    private function resolveUserTypeByEmail(string $email): ?UserType
+    {
+        $user = User::query()->where('email', $email)->first(['id', 'type']);
+
+        if (!$user) {
+            return null;
+        }
+
+        if ($user->type instanceof UserType) {
+            return $user->type;
+        }
+
+        return is_string($user->type) ? UserType::tryFrom($user->type) : null;
     }
 }
 
