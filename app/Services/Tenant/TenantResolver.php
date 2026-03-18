@@ -47,6 +47,9 @@ class TenantResolver
     {
         // If user has a driver or guardian relationship
         if ($user instanceof \App\Models\User) {
+            if ($user->tenant_id) {
+                return $user->tenant_id;
+            }
             if ($user->driver) {
                 return $user->driver->tenant_id;
             }

@@ -37,6 +37,7 @@ class DriverAuthService implements AuthServiceInterface
 
             // Create user
             $user = User::create([
+                'tenant_id' => $tenant->id,
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
@@ -73,7 +74,7 @@ class DriverAuthService implements AuthServiceInterface
             ->where('type', $type)
             ->first();
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        if (!$user || !Hash::check($password, $user->password) || !$user->is_active) {
             return null;
         }
 
@@ -83,6 +84,10 @@ class DriverAuthService implements AuthServiceInterface
             ->first();
         
         if (!$driver) {
+            return null;
+        }
+
+        if (!$driver->tenant || !$driver->tenant->is_active) {
             return null;
         }
 

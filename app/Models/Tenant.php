@@ -10,6 +10,11 @@ class Tenant extends Model
     protected $fillable = [
         'name',
         'slug',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     /**
@@ -26,6 +31,14 @@ class Tenant extends Model
     public function guardians(): HasMany
     {
         return $this->hasMany(Guardian::class);
+    }
+
+    /**
+     * Get all users for this tenant.
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
     }
 
     /**

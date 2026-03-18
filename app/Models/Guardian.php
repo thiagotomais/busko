@@ -15,6 +15,7 @@ class Guardian extends Model
     protected $fillable = [
         'tenant_id',
         'user_id',
+        'primary_driver_id',
         'cpf',
         'address_id',
         'slug',
@@ -71,6 +72,14 @@ class Guardian extends Model
     public function address(): BelongsTo
     {
         return $this->belongsTo(Address::class);
+    }
+
+    /**
+     * Get the primary driver for this guardian.
+     */
+    public function primaryDriver(): BelongsTo
+    {
+        return $this->belongsTo(Driver::class, 'primary_driver_id');
     }
 
     /**

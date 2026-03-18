@@ -38,6 +38,14 @@
                             <span class="text-xl">👥</span> Guardiões
                         </a> <br />
 
+                        <a href="{{ route('portal.company.index') }}" class="nav-link {{ request()->routeIs('portal.company.*') ? 'active' : '' }}">
+                            <span class="text-xl">🏢</span> Empresa
+                        </a> <br />
+
+                        <a href="{{ route('portal.users.index') }}" class="nav-link {{ request()->routeIs('portal.users.*') ? 'active' : '' }}">
+                            <span class="text-xl">🧾</span> Gestão de Usuários
+                        </a> <br />
+
                         <hr class="my-4">
 
                         <div class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">

@@ -30,6 +30,7 @@ class MeController extends Controller
                 'type' => $user->type->value,
                 'created_at' => $user->created_at,
             ],
+            'tenant_id' => $user->tenant_id,
         ];
 
         // Add driver or guardian specific data

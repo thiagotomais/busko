@@ -16,7 +16,9 @@ class BasePolicy
         $modelTenantId = null;
 
         // Get user's tenant ID
-        if ($user->driver) {
+        if ($user->tenant_id) {
+            $userTenantId = $user->tenant_id;
+        } elseif ($user->driver) {
             $userTenantId = $user->driver->tenant_id;
         } elseif ($user->guardian) {
             $userTenantId = $user->guardian->tenant_id;

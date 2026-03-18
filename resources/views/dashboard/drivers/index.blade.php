@@ -8,10 +8,16 @@
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <!-- Header -->
     <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-gray-800">Lista de Motoristas</h3>
-        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-            {{ $drivers->total() }} total
-        </span>
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800">Lista de Motoristas</h3>
+            <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium inline-block mt-2">
+                {{ $drivers->total() }} total
+            </span>
+        </div>
+
+        <a href="{{ route('portal.drivers.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
+            + Cadastrar Motorista
+        </a>
     </div>
 
     <!-- Table -->

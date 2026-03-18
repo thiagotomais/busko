@@ -21,10 +21,12 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'email',
         'password',
         'type',
+        'is_active',
     ];
 
     /**
@@ -48,6 +50,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'type' => UserType::class,
+            'is_active' => 'boolean',
         ];
     }
 
@@ -65,6 +68,14 @@ class User extends Authenticatable
     public function guardian()
     {
         return $this->hasOne(Guardian::class, 'user_id');
+    }
+
+    /**
+     * Get the transport company associated with this user.
+     */
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }
 

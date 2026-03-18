@@ -172,6 +172,58 @@ class AuthTest extends TestCase
             'token' => hash('sha256', $token)
         ]);
     }
+
+    public function test_inactive_tenant_cannot_login(): void
+    {
+        $this->postJson('/api/v1/auth/drivers/register', [
+            'name' => 'Empresa Inativa',
+            'email' => 'inativa@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'cpf' => '22233344405',
+            'cnh' => '12345678901',
+        ]);
+
+        $driver = Driver::withoutGlobalScopes()->where('cpf', '22233344405')->latest('id')->firstOrFail();
+        $driver->tenant()->update(['is_active' => false]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'inativa@example.com',
+            'password' => 'password123',
+            'type' => 'driver',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_admin_can_login_and_access_me_endpoint(): void
+    {
+        $this->seed();
+
+        $login = $this->postJson('/api/v1/auth/login', [
+            'email' => 'admin@busko.com',
+            'password' => 'admin@busko',
+            'type' => 'admin',
+        ]);
+
+        $login->assertStatus(200);
+        $token = $login->json('data.token');
+        $this->assertNotEmpty($token);
+
+        $me = $this->getJson('/api/v1/auth/me', [
+            'Authorization' => 'Bearer ' . $token,
+        ]);
+
+        $me->assertStatus(200);
+        $me->assertJsonPath('data.user.type', 'admin');
+        $me->assertJsonStructure([
+            'message',
+            'data' => [
+                'user' => ['id', 'name', 'email', 'type'],
+                'tenant_id',
+            ],
+        ]);
+    }
 }
 
 

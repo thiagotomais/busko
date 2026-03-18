@@ -15,6 +15,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind('current_tenant_id', function () {
             $user = auth()->user();
             if ($user) {
+                if (isset($user->tenant_id) && $user->tenant_id) {
+                    return $user->tenant_id;
+                }
                 if (method_exists($user, 'driver') && $user->driver) {
                     return $user->driver->tenant_id;
                 }

@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
         $tenant = Tenant::create([
             'name' => 'Busko Transportes',
             'slug' => 'busko-transportes',
+            'is_active' => true,
         ]);
 
         // Create addresses
@@ -49,10 +50,12 @@ class DatabaseSeeder extends Seeder
 
         // Create driver user and profile
         $driverUser = User::create([
+            'tenant_id' => $tenant->id,
             'name' => 'Thiago Driver',
             'email' => 'thiago@tomais',
             'password' => Hash::make('thiago@tomais'),
             'type' => 'driver',
+            'is_active' => true,
         ]);
 
         $driver = Driver::create([
@@ -66,18 +69,30 @@ class DatabaseSeeder extends Seeder
 
         // Create guardian user and profile
         $guardianUser = User::create([
+            'tenant_id' => $tenant->id,
             'name' => 'Maria Guardian',
             'email' => 'guardian@test.com',
             'password' => Hash::make('password'),
             'type' => 'guardian',
+            'is_active' => true,
         ]);
 
         $guardian = Guardian::create([
             'tenant_id' => $tenant->id,
             'user_id' => $guardianUser->id,
+            'primary_driver_id' => $driver->id,
             'cpf' => '987.654.321-00',
             'address_id' => $guardianAddress->id,
             'slug' => Str::uuid()->toString(),
+        ]);
+
+        // Create global admin user (not linked to a specific tenant)
+        User::create([
+            'name' => 'Admin Busko',
+            'email' => 'admin@busko.com',
+            'password' => Hash::make('admin@busko'),
+            'type' => 'admin',
+            'is_active' => true,
         ]);
 
         // Associate driver and guardian

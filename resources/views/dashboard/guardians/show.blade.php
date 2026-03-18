@@ -66,6 +66,19 @@
             </div>
         @endif
 
+        <!-- Primary Driver -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h4 class="text-lg font-semibold text-gray-800 mb-4">🧭 Motorista Principal</h4>
+            @if($guardian->primaryDriver)
+                <a href="{{ route('portal.drivers.show', $guardian->primaryDriver) }}" class="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition">
+                    <p class="font-medium text-gray-900">{{ $guardian->primaryDriver->user?->name ?? 'Usuario nao vinculado' }}</p>
+                    <p class="text-sm text-gray-600">CPF: {{ $guardian->primaryDriver->cpf }}</p>
+                </a>
+            @else
+                <p class="text-gray-500">Nenhum motorista principal definido.</p>
+            @endif
+        </div>
+
         <!-- Associated Drivers -->
         <div class="bg-white rounded-lg shadow p-6">
             <h4 class="text-lg font-semibold text-gray-800 mb-4">🚗 Motoristas Associados</h4>
