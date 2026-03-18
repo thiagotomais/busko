@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -60,6 +61,7 @@ class DatabaseSeeder extends Seeder
             'cpf' => '123.456.789-00',
             'cnh' => '12345678900',
             'address_id' => $driverAddress->id,
+            'slug' => Str::uuid()->toString(),
         ]);
 
         // Create guardian user and profile
@@ -75,6 +77,7 @@ class DatabaseSeeder extends Seeder
             'user_id' => $guardianUser->id,
             'cpf' => '987.654.321-00',
             'address_id' => $guardianAddress->id,
+            'slug' => Str::uuid()->toString(),
         ]);
 
         // Associate driver and guardian

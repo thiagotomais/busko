@@ -76,8 +76,8 @@
     <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p class="text-sm text-gray-700">
             <strong>Demo:</strong><br>
-            Email: <code class="bg-white px-2 py-1 rounded">driver@test.com</code><br>
-            Senha: <code class="bg-white px-2 py-1 rounded">password</code>
+            Motorista: <code class="bg-white px-2 py-1 rounded">thiago@tomais</code> / <code class="bg-white px-2 py-1 rounded">thiago@tomais</code> (Tipo: Motorista)<br>
+            Guardião: <code class="bg-white px-2 py-1 rounded">guardian@test.com</code> / <code class="bg-white px-2 py-1 rounded">password</code> (Tipo: Guardião)
         </p>
     </div>
 </div>

@@ -42,9 +42,13 @@
                             <code class="bg-gray-100 px-2 py-1 rounded">{{ $driver->cnh }}</code>
                         </td>
                         <td class="px-6 py-4 text-sm">
-                            <a href="{{ route('portal.drivers.show', $driver) }}" class="text-blue-600 hover:text-blue-800 font-medium">
-                                Ver Detalhes →
-                            </a>
+                            @if(!empty($driver->slug))
+                                <a href="{{ route('portal.drivers.show', $driver) }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                                    Ver Detalhes →
+                                </a>
+                            @else
+                                <span class="text-gray-500">Sem slug</span>
+                            @endif
                         </td>
                     </tr>
                 @empty

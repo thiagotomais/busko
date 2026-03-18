@@ -44,9 +44,13 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 text-sm">
-                            <a href="{{ route('portal.guardians.show', $guardian) }}" class="text-blue-600 hover:text-blue-800 font-medium">
-                                Ver Detalhes →
-                            </a>
+                            @if(!empty($guardian->slug))
+                                <a href="{{ route('portal.guardians.show', $guardian) }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                                    Ver Detalhes →
+                                </a>
+                            @else
+                                <span class="text-gray-500">Sem slug</span>
+                            @endif
                         </td>
                     </tr>
                 @empty
