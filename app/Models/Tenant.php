@@ -55,6 +55,14 @@ class Tenant extends Model
     }
 
     /**
+     * Get all passengers for this tenant.
+     */
+    public function passengers(): HasMany
+    {
+        return $this->hasMany(Passenger::class);
+    }
+
+    /**
      * Get all driver-guardian relationships for this tenant.
      */
     public function driverGuardians(): HasMany

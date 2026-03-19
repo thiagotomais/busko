@@ -100,6 +100,20 @@
                 <p class="text-gray-500 text-center py-4">Nenhum motorista associado.</p>
             @endif
         </div>
+
+        <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-lg font-semibold text-gray-800">🚌 Passageiros</h4>
+                @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+                    <a href="{{ route('portal.passengers.create', array_merge(['guardian_id' => $guardian->id], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" class="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+                        + Cadastrar Passageiro
+                    </a>
+                @endif
+            </div>
+            <p class="text-sm text-gray-600">
+                Total de passageiros vinculados a este guardião: <span class="font-semibold">{{ $guardian->passengers->count() }}</span>
+            </p>
+        </div>
     </div>
 
     <!-- Sidebar -->

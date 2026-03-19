@@ -5,7 +5,7 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
     <!-- Stats Cards -->
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center justify-between">
@@ -36,6 +36,16 @@
             <div class="text-4xl">👤</div>
         </div>
     </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-600 text-sm font-medium">Total de Passageiros</p>
+                <p class="text-3xl font-bold text-gray-800">{{ $stats['passengers'] }}</p>
+            </div>
+            <div class="text-4xl">🚌</div>
+        </div>
+    </div>
 </div>
 
 @if($tenant)
@@ -61,7 +71,7 @@
 <!-- Quick Actions -->
 <div class="bg-white rounded-lg shadow p-6 mb-8">
     <h3 class="text-lg font-semibold text-gray-800 mb-4">Ações Rápidas</h3>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
         <a href="{{ route('portal.drivers.index') }}" class="block p-4 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition">
             <p class="text-blue-600 font-semibold">📋 Gerenciar Motoristas</p>
             <p class="text-gray-600 text-sm">Ver e editar dados de motoristas</p>
@@ -76,6 +86,13 @@
             <p class="text-amber-700 font-semibold">🏢 Gerenciar Empresa</p>
             <p class="text-gray-600 text-sm">Editar dados e controlar o status da transportadora</p>
         </a>
+
+        @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+            <a href="{{ route('portal.passengers.index') }}" class="block p-4 border-2 border-indigo-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition">
+                <p class="text-indigo-700 font-semibold">🚌 Gerenciar Passageiros</p>
+                <p class="text-gray-600 text-sm">Cadastrar e vincular passageiros aos guardiões</p>
+            </a>
+        @endif
 
         @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
             <a href="{{ route('portal.users.index') }}" class="block p-4 border-2 border-purple-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition">

@@ -6,6 +6,7 @@ use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Guardian extends Model
@@ -89,5 +90,13 @@ class Guardian extends Model
     {
         return $this->belongsToMany(Driver::class, 'driver_guardians')
             ->withTimestamps();
+    }
+
+    /**
+     * Get all passengers linked to this guardian.
+     */
+    public function passengers(): HasMany
+    {
+        return $this->hasMany(Passenger::class);
     }
 }

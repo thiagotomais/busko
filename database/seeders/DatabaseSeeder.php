@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Driver;
 use App\Models\DriverGuardian;
 use App\Models\Guardian;
+use App\Models\Passenger;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -106,6 +107,48 @@ class DatabaseSeeder extends Seeder
             'driver_id' => $driver->id,
             'guardian_id' => $guardian->id,
             'tenant_id' => $tenant->id,
+        ]);
+
+        Passenger::create([
+            'tenant_id' => $tenant->id,
+            'guardian_id' => $guardian->id,
+            'service_type' => 'ida_volta',
+            'name' => 'Pedro Passageiro',
+            'birth_date' => '2015-03-10',
+            'school_grade' => '5º ano',
+            'period' => 'tarde',
+            'rg' => '123456789',
+            'residential_zip' => '01311200',
+            'residential_street' => 'Rua das Crianças',
+            'residential_number' => '45',
+            'residential_complement' => 'Casa 2',
+            'residential_neighborhood' => 'Centro',
+            'residential_city' => 'São Paulo',
+            'residential_state' => 'SP',
+            'pickup_zip' => '01311200',
+            'pickup_street' => 'Rua das Crianças',
+            'pickup_number' => '45',
+            'pickup_complement' => 'Portão principal',
+            'pickup_neighborhood' => 'Centro',
+            'pickup_city' => 'São Paulo',
+            'pickup_state' => 'SP',
+            'dropoff_zip' => '01310100',
+            'dropoff_street' => 'Rua do Saber',
+            'dropoff_number' => '100',
+            'dropoff_complement' => null,
+            'dropoff_neighborhood' => 'Vila Mariana',
+            'dropoff_city' => 'São Paulo',
+            'dropoff_state' => 'SP',
+            'school_name' => 'Escola Municipal Alfa',
+            'school_zip' => '01310100',
+            'school_street' => 'Rua do Saber',
+            'school_number' => '100',
+            'school_complement' => null,
+            'school_neighborhood' => 'Vila Mariana',
+            'school_city' => 'São Paulo',
+            'school_state' => 'SP',
+            'entry_time' => '13:00',
+            'exit_time' => '18:00',
         ]);
 
         // Create additional test data

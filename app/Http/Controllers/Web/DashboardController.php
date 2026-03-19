@@ -6,14 +6,17 @@ use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\Driver;
 use App\Models\Guardian;
+use App\Models\Passenger;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Rules\ValidCnh;
 use App\Rules\ValidCpf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -30,6 +33,7 @@ class DashboardController extends Controller
         $stats = [
             'drivers' => Driver::count(),
             'guardians' => Guardian::count(),
+            'passengers' => Passenger::count(),
             'users' => User::count(),
         ];
 
@@ -538,8 +542,117 @@ class DashboardController extends Controller
      */
     public function guardianShow(Guardian $guardian): View
     {
-        $guardian->load(['user', 'address', 'tenant', 'primaryDriver.user', 'drivers']);
+        $guardian->load(['user', 'address', 'tenant', 'primaryDriver.user', 'drivers', 'passengers']);
         return view('dashboard.guardians.show', compact('guardian'));
+    }
+
+    /**
+     * Show passengers list for current tenant.
+     */
+    public function passengers(): View
+    {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
+        $tenant = $this->currentTenant();
+
+        $passengers = Passenger::with(['guardian.user'])
+            ->where('tenant_id', $tenant->id)
+            ->orderBy('id', 'desc')
+            ->paginate(15);
+
+        return view('dashboard.passengers.index', compact('passengers'));
+    }
+
+    /**
+     * Show passenger create form.
+     */
+    public function passengerCreate(Request $request): View
+    {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
+        $tenant = $this->currentTenant();
+
+        $guardians = Guardian::with('user')
+            ->where('tenant_id', $tenant->id)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $selectedGuardianId = $request->integer('guardian_id');
+
+        return view('dashboard.passengers.create', compact('guardians', 'selectedGuardianId'));
+    }
+
+    /**
+     * Store a new passenger linked to a guardian.
+     */
+    public function passengerStore(Request $request): RedirectResponse
+    {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
+        $tenant = $this->currentTenant();
+
+        $request->merge([
+            'residential_zip' => preg_replace('/\D/', '', (string) $request->input('residential_zip')),
+            'residential_state' => strtoupper((string) $request->input('residential_state')),
+            'pickup_zip' => preg_replace('/\D/', '', (string) $request->input('pickup_zip')),
+            'pickup_state' => strtoupper((string) $request->input('pickup_state')),
+            'dropoff_zip' => preg_replace('/\D/', '', (string) $request->input('dropoff_zip')),
+            'dropoff_state' => strtoupper((string) $request->input('dropoff_state')),
+            'school_zip' => preg_replace('/\D/', '', (string) $request->input('school_zip')),
+            'school_state' => strtoupper((string) $request->input('school_state')),
+        ]);
+
+        $validated = $request->validate([
+            'guardian_id' => [
+                'required',
+                Rule::exists('guardians', 'id')->where(fn($query) => $query->where('tenant_id', $tenant->id)),
+            ],
+            'service_type' => ['required', Rule::in(['ida', 'volta', 'ida_volta'])],
+            'name' => ['required', 'string', 'max:255'],
+            'birth_date' => ['required', 'date'],
+            'school_grade' => ['required', 'string', 'max:255'],
+            'period' => ['required', Rule::in(['manha', 'tarde', 'noite'])],
+            'rg' => ['required', 'string', 'max:20'],
+            'residential_zip' => ['required', 'string', 'size:8'],
+            'residential_street' => ['required', 'string', 'max:255'],
+            'residential_number' => ['required', 'string', 'max:20'],
+            'residential_complement' => ['nullable', 'string', 'max:255'],
+            'residential_neighborhood' => ['required', 'string', 'max:255'],
+            'residential_city' => ['required', 'string', 'max:255'],
+            'residential_state' => ['required', 'string', 'size:2'],
+            'pickup_zip' => ['required', 'string', 'size:8'],
+            'pickup_street' => ['required', 'string', 'max:255'],
+            'pickup_number' => ['required', 'string', 'max:20'],
+            'pickup_complement' => ['nullable', 'string', 'max:255'],
+            'pickup_neighborhood' => ['required', 'string', 'max:255'],
+            'pickup_city' => ['required', 'string', 'max:255'],
+            'pickup_state' => ['required', 'string', 'size:2'],
+            'dropoff_zip' => ['required', 'string', 'size:8'],
+            'dropoff_street' => ['required', 'string', 'max:255'],
+            'dropoff_number' => ['required', 'string', 'max:20'],
+            'dropoff_complement' => ['nullable', 'string', 'max:255'],
+            'dropoff_neighborhood' => ['required', 'string', 'max:255'],
+            'dropoff_city' => ['required', 'string', 'max:255'],
+            'dropoff_state' => ['required', 'string', 'size:2'],
+            'school_name' => ['required', 'string', 'max:255'],
+            'school_zip' => ['required', 'string', 'size:8'],
+            'school_street' => ['required', 'string', 'max:255'],
+            'school_number' => ['required', 'string', 'max:20'],
+            'school_complement' => ['nullable', 'string', 'max:255'],
+            'school_neighborhood' => ['required', 'string', 'max:255'],
+            'school_city' => ['required', 'string', 'max:255'],
+            'school_state' => ['required', 'string', 'size:2'],
+            'entry_time' => ['required', 'date_format:H:i'],
+            'exit_time' => ['required', 'date_format:H:i'],
+        ]);
+
+        Passenger::create([
+            ...$validated,
+            'tenant_id' => $tenant->id,
+        ]);
+
+        return redirect()->route('portal.passengers.index', $this->companyRouteParams())
+            ->with('success', 'Passageiro cadastrado com sucesso.');
     }
 
     /**
@@ -551,6 +664,45 @@ class DashboardController extends Controller
         $banks = \App\Services\BankService::search($query);
 
         return response()->json(array_values($banks));
+    }
+
+    /**
+     * Lookup CEP data for address auto-fill.
+     */
+    public function lookupCep(string $cep): JsonResponse
+    {
+        $normalizedCep = preg_replace('/\D/', '', $cep);
+
+        if (strlen((string) $normalizedCep) !== 8) {
+            return response()->json([
+                'message' => 'CEP inválido.',
+            ], 422);
+        }
+
+        $response = Http::timeout(8)->get("https://viacep.com.br/ws/{$normalizedCep}/json/");
+
+        if ($response->failed()) {
+            return response()->json([
+                'message' => 'Falha na consulta de CEP.',
+            ], 502);
+        }
+
+        $data = $response->json();
+
+        if (($data['erro'] ?? false) === true) {
+            return response()->json([
+                'message' => 'CEP não encontrado.',
+            ], 404);
+        }
+
+        return response()->json([
+            'zip' => $normalizedCep,
+            'street' => $data['logradouro'] ?? '',
+            'neighborhood' => $data['bairro'] ?? '',
+            'city' => $data['localidade'] ?? '',
+            'state' => strtoupper((string) ($data['uf'] ?? '')),
+            'complement' => $data['complemento'] ?? '',
+        ]);
     }
 
     /**

@@ -38,6 +38,12 @@
                             <span class="text-xl">👥</span> Guardiões
                         </a> <br />
 
+                        @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+                            <a href="{{ route('portal.passengers.index') }}" class="nav-link {{ request()->routeIs('portal.passengers.*') ? 'active' : '' }}">
+                                <span class="text-xl">🚌</span> Passageiros
+                            </a> <br />
+                        @endif
+
                         <a href="{{ route('portal.company.index') }}" class="nav-link {{ request()->routeIs('portal.company.*') ? 'active' : '' }}">
                             <span class="text-xl">🏢</span> Empresa
                         </a> <br />

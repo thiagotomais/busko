@@ -67,8 +67,16 @@ Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () 
         Route::get('/{guardian}', [DashboardController::class, 'guardianShow'])->name('show');
     });
 
+    // Passengers Management
+    Route::prefix('passengers')->name('passengers.')->group(function () {
+        Route::get('/', [DashboardController::class, 'passengers'])->name('index');
+        Route::get('/create', [DashboardController::class, 'passengerCreate'])->name('create');
+        Route::post('/', [DashboardController::class, 'passengerStore'])->name('store');
+    });
+
     // Bank autocomplete API
     Route::get('/api/banks/search', [DashboardController::class, 'searchBanks'])->name('api.banks.search');
+    Route::get('/api/cep/{cep}', [DashboardController::class, 'lookupCep'])->name('api.cep.lookup');
     
     // Logout
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
