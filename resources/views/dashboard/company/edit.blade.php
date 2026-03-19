@@ -38,11 +38,25 @@
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label for="bank_code" class="block text-sm font-semibold text-gray-700 mb-2">Código do Banco</label>
-                    <input type="text" id="bank_code" name="bank_code" placeholder="001" value="{{ old('bank_code', $tenant->bank_code) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 @error('bank_code') border-red-500 @enderror">
+                    <div class="relative">
+                        <input type="text" id="bank_code" name="bank_code" 
+                            list="bank_code_list"
+                            placeholder="Digite código ou nome do banco" 
+                            value="{{ old('bank_code', $tenant->bank_code) }}" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 @error('bank_code') border-red-500 @enderror"
+                            autocomplete="off">
+                        <datalist id="bank_code_list"></datalist>
+                    </div>
                     @error('bank_code')
                         <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
                     @enderror
-                    <p class="text-xs text-gray-500 mt-1">Ex: 001 (Banco do Brasil), 033 (Santander), 104 (Caixa)</p>
+                    <div id="bank_name_display" class="text-xs text-gray-600 mt-1">
+                        @if($tenant->bank_code && \App\Services\BankService::getByCode($tenant->bank_code))
+                            <span class="font-medium">{{ \App\Services\BankService::getByCode($tenant->bank_code)['name'] }}</span>
+                        @else
+                            <span class="text-gray-500">Selecione um banco da lista</span>
+                        @endif
+                    </div>
                 </div>
 
                 <div>
@@ -105,4 +119,70 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bankCodeInput = document.getElementById('bank_code');
+    const bankCodeList = document.getElementById('bank_code_list');
+    const bankNameDisplay = document.getElementById('bank_name_display');
+    const bankSearchUrl = '{{ route("portal.api.banks.search") }}';
+
+    async function updateBankList(query) {
+        if (query.length === 0) {
+            bankCodeList.innerHTML = '';
+            bankNameDisplay.innerHTML = '<span class="text-gray-500">Selecione um banco da lista</span>';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${bankSearchUrl}?q=${encodeURIComponent(query)}`);
+            const banks = await response.json();
+            
+            bankCodeList.innerHTML = '';
+            banks.forEach(bank => {
+                const option = document.createElement('option');
+                option.value = bank.code;
+                option.textContent = `${bank.code} - ${bank.name}`;
+                bankCodeList.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao buscar bancos:', error);
+        }
+    }
+
+    // Atualizar lista enquanto digita
+    bankCodeInput.addEventListener('input', function(e) {
+        updateBankList(e.target.value);
+    });
+
+    // Atualizar nome do banco quando seleciona
+    bankCodeInput.addEventListener('change', async function(e) {
+        const code = e.target.value;
+        if (code) {
+            try {
+                const response = await fetch(`${bankSearchUrl}?q=${encodeURIComponent(code)}`);
+                const banks = await response.json();
+                const bank = banks.find(b => b.code === code);
+                if (bank) {
+                    bankNameDisplay.innerHTML = `<span class="font-medium text-amber-700">${bank.code} - ${bank.name}</span>`;
+                } else {
+                    bankNameDisplay.innerHTML = '<span class="text-gray-500">Banco não encontrado</span>';
+                }
+            } catch (error) {
+                console.error('Erro ao buscar banco:', error);
+            }
+        } else {
+            bankNameDisplay.innerHTML = '<span class="text-gray-500">Selecione um banco da lista</span>';
+        }
+    });
+
+    // Carregar lista inicial ao focar
+    bankCodeInput.addEventListener('focus', function() {
+        if (bankCodeInput.value.length === 0) {
+            updateBankList('');
+        }
+    });
+});
+</script>
 @endsection
+

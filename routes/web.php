@@ -66,6 +66,9 @@ Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () 
         Route::get('/', [DashboardController::class, 'guardians'])->name('index');
         Route::get('/{guardian}', [DashboardController::class, 'guardianShow'])->name('show');
     });
+
+    // Bank autocomplete API
+    Route::get('/api/banks/search', [DashboardController::class, 'searchBanks'])->name('api.banks.search');
     
     // Logout
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');

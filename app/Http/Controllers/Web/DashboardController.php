@@ -543,6 +543,17 @@ class DashboardController extends Controller
     }
 
     /**
+     * Search banks by code or name (for autocomplete).
+     */
+    public function searchBanks(Request $request)
+    {
+        $query = $request->query('q', '');
+        $banks = \App\Services\BankService::search($query);
+
+        return response()->json(array_values($banks));
+    }
+
+    /**
      * Get the transport company associated with the authenticated user.
      * Global admins must explicitly select a company via query parameter or route.
      */
