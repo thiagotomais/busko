@@ -77,10 +77,12 @@
             <p class="text-gray-600 text-sm">Editar dados e controlar o status da transportadora</p>
         </a>
 
-        <a href="{{ route('portal.users.index') }}" class="block p-4 border-2 border-purple-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition">
-            <p class="text-purple-700 font-semibold">🧾 Gestão de Usuários</p>
-            <p class="text-gray-600 text-sm">Criar, editar e ativar/desativar usuários</p>
-        </a>
+        @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+            <a href="{{ route('portal.users.index') }}" class="block p-4 border-2 border-purple-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition">
+                <p class="text-purple-700 font-semibold">🧾 Gestão de Usuários</p>
+                <p class="text-gray-600 text-sm">Criar, editar e ativar/desativar usuários</p>
+            </a>
+        @endif
     </div>
 </div>
 

@@ -56,6 +56,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('thiago@tomais'),
             'type' => 'driver',
             'is_active' => true,
+            'is_company_manager' => true,
         ]);
 
         $driver = Driver::create([

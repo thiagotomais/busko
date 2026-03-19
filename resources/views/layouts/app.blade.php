@@ -42,9 +42,11 @@
                             <span class="text-xl">🏢</span> Empresa
                         </a> <br />
 
-                        <a href="{{ route('portal.users.index') }}" class="nav-link {{ request()->routeIs('portal.users.*') ? 'active' : '' }}">
-                            <span class="text-xl">🧾</span> Gestão de Usuários
-                        </a> <br />
+                        @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+                            <a href="{{ route('portal.users.index') }}" class="nav-link {{ request()->routeIs('portal.users.*') ? 'active' : '' }}">
+                                <span class="text-xl">🧾</span> Gestão de Usuários
+                            </a> <br />
+                        @endif
 
                         <hr class="my-4">
 

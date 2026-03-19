@@ -8,12 +8,42 @@
 <div class="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
     <div class="mb-6">
         <h3 class="text-xl font-semibold text-gray-800">{{ $user->name }}</h3>
-        <p class="text-sm text-gray-600 mt-1">Tipo: <span class="capitalize font-medium">{{ $user->type?->value ?? $user->type }}</span></p>
+        <p class="text-sm text-gray-600 mt-1">Altere dados, tipo de perfil e permissões do usuário.</p>
     </div>
 
     <form action="{{ route('portal.users.update', $user) }}" method="POST" class="space-y-5">
         @csrf
         @method('PATCH')
+
+        @if(request()->filled('company_id'))
+            <input type="hidden" name="company_id" value="{{ request()->integer('company_id') }}">
+        @endif
+
+        <div>
+            <label for="type" class="block text-sm font-semibold text-gray-700 mb-2">Tipo de Usuário</label>
+            <select id="type" name="type" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('type') border-red-500 @enderror" required>
+                @php($currentType = old('type', $user->type?->value ?? $user->type))
+                <option value="driver" {{ $currentType === 'driver' ? 'selected' : '' }}>Motorista</option>
+                <option value="guardian" {{ $currentType === 'guardian' ? 'selected' : '' }}>Guardião</option>
+                @if($canCreateAdmin)
+                    <option value="admin" {{ $currentType === 'admin' ? 'selected' : '' }}>Administrador</option>
+                @endif
+            </select>
+            @error('type')
+                <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <div id="driver-manager-field" class="p-4 rounded-lg border border-amber-200 bg-amber-50">
+            <label class="inline-flex items-center gap-2 text-sm font-semibold text-amber-900">
+                <input type="checkbox" id="is_company_manager" name="is_company_manager" value="1" {{ old('is_company_manager', $user->is_company_manager) ? 'checked' : '' }} class="rounded border-amber-400 text-amber-600 focus:ring-amber-500">
+                Marcar como Gestor Empresa
+            </label>
+            <p class="text-xs text-amber-800 mt-2">Gestor Empresa pode cadastrar usuários Motorista e Guardião da própria empresa.</p>
+            @error('is_company_manager')
+                <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
+            @enderror
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
@@ -33,28 +63,23 @@
             </div>
         </div>
 
-        @if(($user->type?->value ?? $user->type) === 'driver' || ($user->type?->value ?? $user->type) === 'guardian')
-            <div>
+        <div id="cpf-field">
                 <label for="cpf" class="block text-sm font-semibold text-gray-700 mb-2">CPF</label>
-                <input type="text" id="cpf" name="cpf" value="{{ old('cpf', $user->driver?->cpf ?? $user->guardian?->cpf) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('cpf') border-red-500 @enderror" required>
+            <input type="text" id="cpf" name="cpf" value="{{ old('cpf', $user->driver?->cpf ?? $user->guardian?->cpf) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('cpf') border-red-500 @enderror">
                 @error('cpf')
                     <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
                 @enderror
-            </div>
-        @endif
+        </div>
 
-        @if(($user->type?->value ?? $user->type) === 'driver')
-            <div>
+        <div id="cnh-field">
                 <label for="cnh" class="block text-sm font-semibold text-gray-700 mb-2">CNH</label>
-                <input type="text" id="cnh" name="cnh" value="{{ old('cnh', $user->driver?->cnh) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('cnh') border-red-500 @enderror" required>
+            <input type="text" id="cnh" name="cnh" value="{{ old('cnh', $user->driver?->cnh) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('cnh') border-red-500 @enderror">
                 @error('cnh')
                     <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
                 @enderror
-            </div>
-        @endif
+        </div>
 
-        @if(($user->type?->value ?? $user->type) === 'guardian')
-            <div>
+        <div id="guardian-driver-field">
                 <label for="primary_driver_id" class="block text-sm font-semibold text-gray-700 mb-2">Motorista Principal (opcional)</label>
                 <select id="primary_driver_id" name="primary_driver_id" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('primary_driver_id') border-red-500 @enderror">
                     <option value="">Nenhum</option>
@@ -67,8 +92,7 @@
                 @error('primary_driver_id')
                     <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
                 @enderror
-            </div>
-        @endif
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
@@ -86,9 +110,33 @@
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
-            <a href="{{ route('portal.users.index') }}" class="px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+            <a href="{{ route('portal.users.index', request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []) }}" class="px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
             <button type="submit" class="px-5 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Salvar Alterações</button>
         </div>
     </form>
 </div>
+
+<script>
+    function toggleTypeFields() {
+        const type = document.getElementById('type').value;
+        const cpfField = document.getElementById('cpf-field');
+        const cnhField = document.getElementById('cnh-field');
+        const guardianDriverField = document.getElementById('guardian-driver-field');
+        const driverManagerField = document.getElementById('driver-manager-field');
+        const managerInput = document.getElementById('is_company_manager');
+
+        const showPerson = type === 'driver' || type === 'guardian';
+        cpfField.style.display = showPerson ? '' : 'none';
+        cnhField.style.display = type === 'driver' ? '' : 'none';
+        guardianDriverField.style.display = type === 'guardian' ? '' : 'none';
+        driverManagerField.style.display = type === 'driver' ? '' : 'none';
+
+        if (type !== 'driver') {
+            managerInput.checked = false;
+        }
+    }
+
+    document.getElementById('type').addEventListener('change', toggleTypeFields);
+    toggleTypeFields();
+</script>
 @endsection

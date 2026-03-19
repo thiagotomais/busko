@@ -206,13 +206,17 @@ class DashboardController extends Controller
      */
     public function userCreate(): View
     {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
         $tenant = $this->currentTenant();
         $drivers = Driver::with('user')
             ->where('tenant_id', $tenant->id)
             ->orderBy('id', 'desc')
             ->get();
 
-        return view('dashboard.users.create', compact('drivers'));
+        $canCreateAdmin = $this->canCreateAdmins();
+
+        return view('dashboard.users.create', compact('drivers', 'canCreateAdmin'));
     }
 
     /**
@@ -220,6 +224,8 @@ class DashboardController extends Controller
      */
     public function users(): View
     {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
         $tenant = $this->currentTenant();
 
         $users = User::with(['driver', 'guardian.primaryDriver.user'])
@@ -235,7 +241,12 @@ class DashboardController extends Controller
      */
     public function userStore(Request $request): RedirectResponse
     {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
         $tenant = $this->currentTenant();
+        $allowedTypes = $this->canCreateAdmins()
+            ? [UserType::DRIVER->value, UserType::GUARDIAN->value, UserType::ADMIN->value]
+            : [UserType::DRIVER->value, UserType::GUARDIAN->value];
 
         $request->merge([
             'cpf' => $request->filled('cpf') ? preg_replace('/\D/', '', (string) $request->input('cpf')) : null,
@@ -243,12 +254,13 @@ class DashboardController extends Controller
         ]);
 
         $validated = $request->validate([
-            'type' => ['required', Rule::in(['driver', 'guardian', 'admin'])],
+            'type' => ['required', Rule::in($allowedTypes)],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'is_company_manager' => ['nullable', 'boolean'],
             'cpf' => [
-                Rule::requiredIf(fn() => in_array($request->input('type'), ['driver', 'guardian'], true)),
+                Rule::requiredIf(fn() => in_array($request->input('type'), [UserType::DRIVER->value, UserType::GUARDIAN->value], true)),
                 'nullable',
                 'string',
                 'size:11',
@@ -257,7 +269,7 @@ class DashboardController extends Controller
                 new ValidCpf(),
             ],
             'cnh' => [
-                Rule::requiredIf(fn() => $request->input('type') === 'driver'),
+                Rule::requiredIf(fn() => $request->input('type') === UserType::DRIVER->value),
                 'nullable',
                 'string',
                 'size:11',
@@ -271,15 +283,18 @@ class DashboardController extends Controller
         ]);
 
         DB::transaction(function () use ($tenant, $validated): void {
+            $type = UserType::from($validated['type']);
+
             $user = User::create([
-                'tenant_id' => $validated['type'] === UserType::ADMIN->value ? null : $tenant->id,
+                'tenant_id' => $type === UserType::ADMIN ? null : $tenant->id,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
-                'type' => $validated['type'],
+                'type' => $type,
+                'is_company_manager' => $type === UserType::DRIVER ? (bool) ($validated['is_company_manager'] ?? false) : false,
             ]);
 
-            if ($validated['type'] === UserType::DRIVER->value) {
+            if ($type === UserType::DRIVER) {
                 Driver::create([
                     'tenant_id' => $tenant->id,
                     'user_id' => $user->id,
@@ -289,7 +304,7 @@ class DashboardController extends Controller
                 return;
             }
 
-            if ($validated['type'] === UserType::GUARDIAN->value) {
+            if ($type === UserType::GUARDIAN) {
                 $guardian = Guardian::create([
                     'tenant_id' => $tenant->id,
                     'user_id' => $user->id,
@@ -314,6 +329,8 @@ class DashboardController extends Controller
      */
     public function userEdit(User $user): View
     {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
         $tenant = $this->currentTenant();
         abort_unless((int) $user->tenant_id === (int) $tenant->id, 403, 'Acesso não autorizado.');
 
@@ -324,7 +341,9 @@ class DashboardController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        return view('dashboard.users.edit', compact('user', 'drivers'));
+        $canCreateAdmin = $this->canCreateAdmins();
+
+        return view('dashboard.users.edit', compact('user', 'drivers', 'canCreateAdmin'));
     }
 
     /**
@@ -332,23 +351,33 @@ class DashboardController extends Controller
      */
     public function userUpdate(Request $request, User $user): RedirectResponse
     {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
         $tenant = $this->currentTenant();
         abort_unless((int) $user->tenant_id === (int) $tenant->id, 403, 'Acesso não autorizado.');
 
         $user->loadMissing(['driver', 'guardian']);
+
+        $allowedTypes = $this->canCreateAdmins()
+            ? [UserType::DRIVER->value, UserType::GUARDIAN->value, UserType::ADMIN->value]
+            : [UserType::DRIVER->value, UserType::GUARDIAN->value];
 
         $request->merge([
             'cpf' => $request->filled('cpf') ? preg_replace('/\D/', '', (string) $request->input('cpf')) : null,
             'cnh' => $request->filled('cnh') ? preg_replace('/\D/', '', (string) $request->input('cnh')) : null,
         ]);
 
-        $isDriver = $user->type === UserType::DRIVER;
-        $isGuardian = $user->type === UserType::GUARDIAN;
+        $targetTypeInput = (string) $request->input('type', $user->type?->value ?? $user->type);
+        $targetType = UserType::tryFrom($targetTypeInput) ?? UserType::from($user->type?->value ?? $user->type);
+        $isDriver = $targetType === UserType::DRIVER;
+        $isGuardian = $targetType === UserType::GUARDIAN;
 
         $validated = $request->validate([
+            'type' => ['required', Rule::in($allowedTypes)],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'is_company_manager' => ['nullable', 'boolean'],
             'cpf' => [
                 Rule::requiredIf(fn() => $isDriver || $isGuardian),
                 'nullable',
@@ -372,18 +401,50 @@ class DashboardController extends Controller
             ],
         ]);
 
-        DB::transaction(function () use ($tenant, $user, $validated, $isDriver, $isGuardian): void {
+        DB::transaction(function () use ($tenant, $user, $validated, $targetType, $isDriver, $isGuardian): void {
             $user->update([
+                'tenant_id' => $targetType === UserType::ADMIN ? null : $tenant->id,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
+                'type' => $targetType,
+                'is_company_manager' => $targetType === UserType::DRIVER ? (bool) ($validated['is_company_manager'] ?? false) : false,
                 'password' => !empty($validated['password']) ? Hash::make($validated['password']) : $user->password,
             ]);
+
+            if ($targetType === UserType::ADMIN) {
+                if ($user->driver) {
+                    Guardian::where('primary_driver_id', $user->driver->id)->update(['primary_driver_id' => null]);
+                    $user->driver->guardians()->detach();
+                    $user->driver->delete();
+                }
+
+                if ($user->guardian) {
+                    $user->guardian->drivers()->detach();
+                    $user->guardian->delete();
+                }
+
+                return;
+            }
 
             if ($isDriver && $user->driver) {
                 $user->driver->update([
                     'cpf' => $validated['cpf'],
                     'cnh' => $validated['cnh'],
                 ]);
+            } elseif ($isDriver && !$user->driver) {
+                if ($user->guardian) {
+                    $user->guardian->drivers()->detach();
+                    $user->guardian->delete();
+                }
+
+                Driver::create([
+                    'tenant_id' => $tenant->id,
+                    'user_id' => $user->id,
+                    'cpf' => $validated['cpf'],
+                    'cnh' => $validated['cnh'],
+                ]);
+
+                return;
             }
 
             if ($isGuardian && $user->guardian) {
@@ -397,10 +458,29 @@ class DashboardController extends Controller
                         $validated['primary_driver_id'] => ['tenant_id' => $tenant->id],
                     ]);
                 }
+            } elseif ($isGuardian && !$user->guardian) {
+                if ($user->driver) {
+                    Guardian::where('primary_driver_id', $user->driver->id)->update(['primary_driver_id' => null]);
+                    $user->driver->guardians()->detach();
+                    $user->driver->delete();
+                }
+
+                $guardian = Guardian::create([
+                    'tenant_id' => $tenant->id,
+                    'user_id' => $user->id,
+                    'cpf' => $validated['cpf'],
+                    'primary_driver_id' => $validated['primary_driver_id'] ?? null,
+                ]);
+
+                if (!empty($validated['primary_driver_id'])) {
+                    $guardian->drivers()->syncWithoutDetaching([
+                        $validated['primary_driver_id'] => ['tenant_id' => $tenant->id],
+                    ]);
+                }
             }
         });
 
-        return redirect()->route('portal.users.index')
+        return redirect()->route('portal.users.index', $this->companyRouteParams())
             ->with('success', 'Usuário atualizado com sucesso.');
     }
 
@@ -409,17 +489,19 @@ class DashboardController extends Controller
      */
     public function userToggleStatus(User $user): RedirectResponse
     {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
         $tenant = $this->currentTenant();
         abort_unless((int) $user->tenant_id === (int) $tenant->id, 403, 'Acesso não autorizado.');
 
         if ((int) auth()->id() === (int) $user->id) {
-            return redirect()->route('portal.users.index')
+            return redirect()->route('portal.users.index', $this->companyRouteParams())
                 ->with('error', 'Não é permitido desativar o próprio usuário.');
         }
 
         $user->update(['is_active' => !$user->is_active]);
 
-        return redirect()->route('portal.users.index')
+        return redirect()->route('portal.users.index', $this->companyRouteParams())
             ->with('success', $user->is_active ? 'Usuário ativado com sucesso.' : 'Usuário desativado com sucesso.');
     }
 
@@ -485,5 +567,43 @@ class DashboardController extends Controller
     private function isSystemAdmin(): bool
     {
         return auth()->check() && auth()->user()?->type === UserType::ADMIN;
+    }
+
+    /**
+     * Check whether authenticated user is a driver with company manager privileges.
+     */
+    private function isCompanyManager(): bool
+    {
+        return auth()->check()
+            && auth()->user()?->type === UserType::DRIVER
+            && (bool) auth()->user()?->is_company_manager;
+    }
+
+    /**
+     * Check if the authenticated user can manage company users.
+     */
+    private function canManageUsers(): bool
+    {
+        return $this->isSystemAdmin() || $this->isCompanyManager();
+    }
+
+    /**
+     * Check if authenticated user can create or promote admins.
+     */
+    private function canCreateAdmins(): bool
+    {
+        return $this->isSystemAdmin();
+    }
+
+    /**
+     * Preserve company context for global admin redirects.
+     *
+     * @return array<string, int>
+     */
+    private function companyRouteParams(): array
+    {
+        return request()->filled('company_id')
+            ? ['company_id' => request()->integer('company_id')]
+            : [];
     }
 }

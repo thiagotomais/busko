@@ -27,6 +27,7 @@ class User extends Authenticatable
         'password',
         'type',
         'is_active',
+        'is_company_manager',
     ];
 
     /**
@@ -51,6 +52,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'type' => UserType::class,
             'is_active' => 'boolean',
+            'is_company_manager' => 'boolean',
         ];
     }
 

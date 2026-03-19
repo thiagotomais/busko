@@ -41,13 +41,14 @@ class UserManagementLifecycleTest extends TestCase
             ->withSession(['_token' => $token])
             ->patch(route('portal.users.update', ['user' => $guardian, 'company_id' => $tenant->id]), [
                 '_token' => $token,
+                'type' => 'guardian',
                 'name' => 'Maria Guardian Editada',
                 'email' => 'guardian@test.com',
                 'cpf' => '52998224725',
                 'primary_driver_id' => $driver->id,
             ]);
 
-        $response->assertRedirect(route('portal.users.index'));
+        $response->assertRedirect(route('portal.users.index', ['company_id' => $tenant->id]));
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('users', [
@@ -77,9 +78,87 @@ class UserManagementLifecycleTest extends TestCase
                 '_token' => $token,
             ]);
 
-        $response->assertRedirect(route('portal.users.index'));
+        $response->assertRedirect(route('portal.users.index', ['company_id' => $tenant->id]));
         $response->assertSessionHas('success');
 
         $this->assertFalse($driverUser->fresh()->is_active);
+    }
+
+    public function test_admin_can_change_user_type_from_driver_to_guardian(): void
+    {
+        $this->seed();
+
+        $admin = User::where('email', 'admin@busko.com')->firstOrFail();
+        $driverUser = User::where('email', 'thiago@tomais')->firstOrFail();
+        $tenant = Tenant::where('slug', 'busko-transportes')->firstOrFail();
+        $token = 'change-type-token';
+
+        $response = $this->actingAs($admin)
+            ->withSession(['_token' => $token])
+            ->patch(route('portal.users.update', ['user' => $driverUser, 'company_id' => $tenant->id]), [
+                '_token' => $token,
+                'type' => 'guardian',
+                'name' => 'Thiago Guardian',
+                'email' => 'thiago@tomais',
+                'cpf' => '52998224725',
+            ]);
+
+        $response->assertRedirect(route('portal.users.index', ['company_id' => $tenant->id]));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $driverUser->id,
+            'type' => 'guardian',
+            'is_company_manager' => false,
+        ]);
+
+        $this->assertDatabaseMissing('drivers', ['user_id' => $driverUser->id]);
+        $this->assertDatabaseHas('guardians', ['user_id' => $driverUser->id]);
+    }
+
+    public function test_company_manager_can_create_driver_but_cannot_create_admin(): void
+    {
+        $this->seed();
+
+        $manager = User::where('email', 'thiago@tomais')->firstOrFail();
+        $this->assertTrue((bool) $manager->is_company_manager);
+        $token = 'manager-create-token';
+
+        $createDriver = $this->actingAs($manager)
+            ->withSession(['_token' => $token])
+            ->post(route('portal.users.store'), [
+                '_token' => $token,
+                'type' => 'driver',
+                'name' => 'Motorista da Empresa',
+                'email' => 'empresa.driver@example.com',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'cpf' => '39053344705',
+                'cnh' => '12345678901',
+                'is_company_manager' => '1',
+            ]);
+
+        $createDriver->assertRedirect(route('portal.dashboard'));
+        $createDriver->assertSessionHas('success');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'empresa.driver@example.com',
+            'type' => 'driver',
+            'is_company_manager' => true,
+        ]);
+
+        $forbidAdmin = $this->actingAs($manager)
+            ->withSession(['_token' => $token])
+            ->post(route('portal.users.store'), [
+                '_token' => $token,
+                'type' => 'admin',
+                'name' => 'Admin Indevido',
+                'email' => 'admin.indevido@example.com',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+            ]);
+
+        $forbidAdmin->assertSessionHasErrors('type');
+        $this->assertDatabaseMissing('users', ['email' => 'admin.indevido@example.com']);
     }
 }
