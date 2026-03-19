@@ -82,6 +82,11 @@ class DashboardController extends Controller
                 'alpha_dash',
                 Rule::unique('tenants', 'slug')->ignore($tenant->id),
             ],
+            'bank_code' => ['nullable', 'string', 'max:10'],
+            'bank_branch' => ['nullable', 'string', 'max:10'],
+            'bank_account' => ['nullable', 'string', 'max:20'],
+            'bank_account_type' => ['nullable', 'in:corrente,poupanca'],
+            'pix_key' => ['nullable', 'string', 'max:255'],
         ]);
 
         $tenant->update($validated);
@@ -121,6 +126,11 @@ class DashboardController extends Controller
                 'alpha_dash',
                 Rule::unique('tenants', 'slug')->ignore($tenant->id),
             ],
+            'bank_code' => ['nullable', 'string', 'max:10'],
+            'bank_branch' => ['nullable', 'string', 'max:10'],
+            'bank_account' => ['nullable', 'string', 'max:20'],
+            'bank_account_type' => ['nullable', 'in:corrente,poupanca'],
+            'pix_key' => ['nullable', 'string', 'max:255'],
         ]);
 
         $tenant->update($validated);

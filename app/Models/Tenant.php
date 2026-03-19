@@ -11,6 +11,11 @@ class Tenant extends Model
         'name',
         'slug',
         'is_active',
+        'bank_code',
+        'bank_branch',
+        'bank_account',
+        'bank_account_type',
+        'pix_key',
     ];
 
     protected $casts = [

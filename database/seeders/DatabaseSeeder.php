@@ -27,6 +27,11 @@ class DatabaseSeeder extends Seeder
             'name' => 'Busko Transportes',
             'slug' => 'busko-transportes',
             'is_active' => true,
+            'bank_code' => '001',
+            'bank_branch' => '0001',
+            'bank_account' => '123456-7',
+            'bank_account_type' => 'corrente',
+            'pix_key' => 'empresa@busko.com.br',
         ]);
 
         // Create addresses
