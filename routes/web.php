@@ -72,6 +72,8 @@ Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () 
         Route::get('/', [DashboardController::class, 'passengers'])->name('index');
         Route::get('/create', [DashboardController::class, 'passengerCreate'])->name('create');
         Route::post('/', [DashboardController::class, 'passengerStore'])->name('store');
+        Route::get('/{passenger}/edit', [DashboardController::class, 'passengerEdit'])->name('edit');
+        Route::patch('/{passenger}', [DashboardController::class, 'passengerUpdate'])->name('update');
     });
 
     // Bank autocomplete API

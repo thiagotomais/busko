@@ -45,9 +45,16 @@
                         </td>
                         <td class="px-6 py-4 text-sm">
                             @if(!empty($guardian->slug))
-                                <a href="{{ route('portal.guardians.show', $guardian) }}" class="text-blue-600 hover:text-blue-800 font-medium">
-                                    Ver Detalhes →
-                                </a>
+                                <div class="flex items-center gap-4">
+                                    <a href="{{ route('portal.guardians.show', $guardian) }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                                        Ver Detalhes →
+                                    </a>
+                                    @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+                                        <a href="{{ route('portal.passengers.create', array_merge(['guardian_id' => $guardian->id], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" class="text-green-600 hover:text-green-800 font-medium">
+                                            Cadastrar Passageiro
+                                        </a>
+                                    @endif
+                                </div>
                             @else
                                 <span class="text-gray-500">Sem slug</span>
                             @endif

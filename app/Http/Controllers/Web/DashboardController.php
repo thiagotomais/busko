@@ -542,7 +542,15 @@ class DashboardController extends Controller
      */
     public function guardianShow(Guardian $guardian): View
     {
-        $guardian->load(['user', 'address', 'tenant', 'primaryDriver.user', 'drivers', 'passengers']);
+        $guardian->load([
+            'user',
+            'address',
+            'tenant',
+            'primaryDriver.user',
+            'drivers',
+            'passengers' => fn ($query) => $query->orderBy('id', 'desc'),
+        ]);
+
         return view('dashboard.guardians.show', compact('guardian'));
     }
 
@@ -571,15 +579,15 @@ class DashboardController extends Controller
         abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
 
         $tenant = $this->currentTenant();
+        $guardianId = $request->integer('guardian_id');
 
-        $guardians = Guardian::with('user')
+        abort_unless($guardianId > 0, 404, 'Guardião responsável financeiro não informado.');
+
+        $guardian = Guardian::with('user')
             ->where('tenant_id', $tenant->id)
-            ->orderBy('id', 'desc')
-            ->get();
+            ->findOrFail($guardianId);
 
-        $selectedGuardianId = $request->integer('guardian_id');
-
-        return view('dashboard.passengers.create', compact('guardians', 'selectedGuardianId'));
+        return view('dashboard.passengers.create', compact('guardian'));
     }
 
     /**
@@ -591,60 +599,8 @@ class DashboardController extends Controller
 
         $tenant = $this->currentTenant();
 
-        $request->merge([
-            'residential_zip' => preg_replace('/\D/', '', (string) $request->input('residential_zip')),
-            'residential_state' => strtoupper((string) $request->input('residential_state')),
-            'pickup_zip' => preg_replace('/\D/', '', (string) $request->input('pickup_zip')),
-            'pickup_state' => strtoupper((string) $request->input('pickup_state')),
-            'dropoff_zip' => preg_replace('/\D/', '', (string) $request->input('dropoff_zip')),
-            'dropoff_state' => strtoupper((string) $request->input('dropoff_state')),
-            'school_zip' => preg_replace('/\D/', '', (string) $request->input('school_zip')),
-            'school_state' => strtoupper((string) $request->input('school_state')),
-        ]);
-
-        $validated = $request->validate([
-            'guardian_id' => [
-                'required',
-                Rule::exists('guardians', 'id')->where(fn($query) => $query->where('tenant_id', $tenant->id)),
-            ],
-            'service_type' => ['required', Rule::in(['ida', 'volta', 'ida_volta'])],
-            'name' => ['required', 'string', 'max:255'],
-            'birth_date' => ['required', 'date'],
-            'school_grade' => ['required', 'string', 'max:255'],
-            'period' => ['required', Rule::in(['manha', 'tarde', 'noite'])],
-            'rg' => ['required', 'string', 'max:20'],
-            'residential_zip' => ['required', 'string', 'size:8'],
-            'residential_street' => ['required', 'string', 'max:255'],
-            'residential_number' => ['required', 'string', 'max:20'],
-            'residential_complement' => ['nullable', 'string', 'max:255'],
-            'residential_neighborhood' => ['required', 'string', 'max:255'],
-            'residential_city' => ['required', 'string', 'max:255'],
-            'residential_state' => ['required', 'string', 'size:2'],
-            'pickup_zip' => ['required', 'string', 'size:8'],
-            'pickup_street' => ['required', 'string', 'max:255'],
-            'pickup_number' => ['required', 'string', 'max:20'],
-            'pickup_complement' => ['nullable', 'string', 'max:255'],
-            'pickup_neighborhood' => ['required', 'string', 'max:255'],
-            'pickup_city' => ['required', 'string', 'max:255'],
-            'pickup_state' => ['required', 'string', 'size:2'],
-            'dropoff_zip' => ['required', 'string', 'size:8'],
-            'dropoff_street' => ['required', 'string', 'max:255'],
-            'dropoff_number' => ['required', 'string', 'max:20'],
-            'dropoff_complement' => ['nullable', 'string', 'max:255'],
-            'dropoff_neighborhood' => ['required', 'string', 'max:255'],
-            'dropoff_city' => ['required', 'string', 'max:255'],
-            'dropoff_state' => ['required', 'string', 'size:2'],
-            'school_name' => ['required', 'string', 'max:255'],
-            'school_zip' => ['required', 'string', 'size:8'],
-            'school_street' => ['required', 'string', 'max:255'],
-            'school_number' => ['required', 'string', 'max:20'],
-            'school_complement' => ['nullable', 'string', 'max:255'],
-            'school_neighborhood' => ['required', 'string', 'max:255'],
-            'school_city' => ['required', 'string', 'max:255'],
-            'school_state' => ['required', 'string', 'size:2'],
-            'entry_time' => ['required', 'date_format:H:i'],
-            'exit_time' => ['required', 'date_format:H:i'],
-        ]);
+        $this->normalizePassengerInput($request);
+        $validated = $this->validatePassengerPayload($request, $tenant);
 
         Passenger::create([
             ...$validated,
@@ -653,6 +609,40 @@ class DashboardController extends Controller
 
         return redirect()->route('portal.passengers.index', $this->companyRouteParams())
             ->with('success', 'Passageiro cadastrado com sucesso.');
+    }
+
+    /**
+     * Show passenger edit form.
+     */
+    public function passengerEdit(Passenger $passenger): View
+    {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
+        $passenger = $this->findTenantPassenger($passenger);
+        $passenger->load('guardian.user');
+        $guardian = $passenger->guardian;
+
+        return view('dashboard.passengers.create', compact('passenger', 'guardian'));
+    }
+
+    /**
+     * Update an existing passenger.
+     */
+    public function passengerUpdate(Request $request, Passenger $passenger): RedirectResponse
+    {
+        abort_unless($this->canManageUsers(), 403, 'Acesso não autorizado.');
+
+        $tenant = $this->currentTenant();
+        $passenger = $this->findTenantPassenger($passenger);
+
+        $this->normalizePassengerInput($request);
+        $validated = $this->validatePassengerPayload($request, $tenant);
+        $validated['guardian_id'] = $passenger->guardian_id;
+
+        $passenger->update($validated);
+
+        return redirect()->route('portal.passengers.index', $this->companyRouteParams())
+            ->with('success', 'Passageiro atualizado com sucesso.');
     }
 
     /**
@@ -766,6 +756,87 @@ class DashboardController extends Controller
     private function canCreateAdmins(): bool
     {
         return $this->isSystemAdmin();
+    }
+
+    /**
+     * Ensure the passenger belongs to the current tenant.
+     */
+    private function findTenantPassenger(Passenger $passenger): Passenger
+    {
+        $tenant = $this->currentTenant();
+
+        abort_unless((int) $passenger->tenant_id === (int) $tenant->id, 404, 'Passageiro não encontrado.');
+
+        return $passenger;
+    }
+
+    /**
+     * Normalize passenger address input before validation.
+     */
+    private function normalizePassengerInput(Request $request): void
+    {
+        $request->merge([
+            'residential_zip' => preg_replace('/\D/', '', (string) $request->input('residential_zip')),
+            'residential_state' => strtoupper((string) $request->input('residential_state')),
+            'pickup_zip' => preg_replace('/\D/', '', (string) $request->input('pickup_zip')),
+            'pickup_state' => strtoupper((string) $request->input('pickup_state')),
+            'dropoff_zip' => preg_replace('/\D/', '', (string) $request->input('dropoff_zip')),
+            'dropoff_state' => strtoupper((string) $request->input('dropoff_state')),
+            'school_zip' => preg_replace('/\D/', '', (string) $request->input('school_zip')),
+            'school_state' => strtoupper((string) $request->input('school_state')),
+        ]);
+    }
+
+    /**
+     * Validate passenger payload.
+     *
+     * @return array<string, mixed>
+     */
+    private function validatePassengerPayload(Request $request, Tenant $tenant): array
+    {
+        return $request->validate([
+            'guardian_id' => [
+                'required',
+                Rule::exists('guardians', 'id')->where(fn ($query) => $query->where('tenant_id', $tenant->id)),
+            ],
+            'service_type' => ['required', Rule::in(['ida', 'volta', 'ida_volta'])],
+            'name' => ['required', 'string', 'max:255'],
+            'birth_date' => ['required', 'date'],
+            'school_grade' => ['required', 'string', 'max:255'],
+            'period' => ['required', Rule::in(['manha', 'tarde', 'noite'])],
+            'rg' => ['required', 'string', 'max:20'],
+            'residential_zip' => ['required', 'string', 'size:8'],
+            'residential_street' => ['required', 'string', 'max:255'],
+            'residential_number' => ['required', 'string', 'max:20'],
+            'residential_complement' => ['nullable', 'string', 'max:255'],
+            'residential_neighborhood' => ['required', 'string', 'max:255'],
+            'residential_city' => ['required', 'string', 'max:255'],
+            'residential_state' => ['required', 'string', 'size:2'],
+            'pickup_zip' => ['required', 'string', 'size:8'],
+            'pickup_street' => ['required', 'string', 'max:255'],
+            'pickup_number' => ['required', 'string', 'max:20'],
+            'pickup_complement' => ['nullable', 'string', 'max:255'],
+            'pickup_neighborhood' => ['required', 'string', 'max:255'],
+            'pickup_city' => ['required', 'string', 'max:255'],
+            'pickup_state' => ['required', 'string', 'size:2'],
+            'dropoff_zip' => ['required', 'string', 'size:8'],
+            'dropoff_street' => ['required', 'string', 'max:255'],
+            'dropoff_number' => ['required', 'string', 'max:20'],
+            'dropoff_complement' => ['nullable', 'string', 'max:255'],
+            'dropoff_neighborhood' => ['required', 'string', 'max:255'],
+            'dropoff_city' => ['required', 'string', 'max:255'],
+            'dropoff_state' => ['required', 'string', 'size:2'],
+            'school_name' => ['required', 'string', 'max:255'],
+            'school_zip' => ['required', 'string', 'size:8'],
+            'school_street' => ['required', 'string', 'max:255'],
+            'school_number' => ['required', 'string', 'max:20'],
+            'school_complement' => ['nullable', 'string', 'max:255'],
+            'school_neighborhood' => ['required', 'string', 'max:255'],
+            'school_city' => ['required', 'string', 'max:255'],
+            'school_state' => ['required', 'string', 'size:2'],
+            'entry_time' => ['required', 'date_format:H:i'],
+            'exit_time' => ['required', 'date_format:H:i'],
+        ]);
     }
 
     /**

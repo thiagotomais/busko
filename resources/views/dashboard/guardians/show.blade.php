@@ -113,6 +113,27 @@
             <p class="text-sm text-gray-600">
                 Total de passageiros vinculados a este guardião: <span class="font-semibold">{{ $guardian->passengers->count() }}</span>
             </p>
+
+            @if($guardian->passengers->count() > 0)
+                <div class="mt-4 space-y-3">
+                    @foreach($guardian->passengers as $passenger)
+                        <div class="border border-gray-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                                <p class="font-medium text-gray-900">{{ $passenger->name }}</p>
+                                <p class="text-sm text-gray-600">RG: {{ $passenger->rg }} · Série: {{ $passenger->school_grade }}</p>
+                                <p class="text-sm text-gray-600 mt-1">Período: {{ ucfirst($passenger->period) }} · Horários: {{ substr($passenger->entry_time, 0, 5) }} / {{ substr($passenger->exit_time, 0, 5) }}</p>
+                            </div>
+                            @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+                                <a href="{{ route('portal.passengers.edit', array_merge(['passenger' => $passenger], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
+                                    Editar Passageiro
+                                </a>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-sm text-gray-500 mt-4">Nenhum passageiro vinculado a este guardião.</p>
+            @endif
         </div>
     </div>
 
