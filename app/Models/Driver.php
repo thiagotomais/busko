@@ -83,4 +83,12 @@ class Driver extends Model
         return $this->belongsToMany(Guardian::class, 'driver_guardians')
             ->withTimestamps();
     }
+
+    /**
+     * Get transport routes assigned to this driver.
+     */
+    public function transportRoutes(): HasMany
+    {
+        return $this->hasMany(TransportRoute::class);
+    }
 }

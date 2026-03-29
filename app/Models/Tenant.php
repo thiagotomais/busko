@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Tenant extends Model
 {
     protected $fillable = [
+        'uid',
         'name',
         'slug',
         'is_active',
@@ -21,6 +23,15 @@ class Tenant extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $tenant): void {
+            if (empty($tenant->uid)) {
+                $tenant->uid = (string) Str::uuid();
+            }
+        });
+    }
 
     /**
      * Get all drivers for this tenant.

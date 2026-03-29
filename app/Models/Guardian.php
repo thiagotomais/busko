@@ -99,4 +99,12 @@ class Guardian extends Model
     {
         return $this->hasMany(Passenger::class);
     }
+
+    /**
+     * Get financial entries linked to this guardian.
+     */
+    public function financialEntries(): HasMany
+    {
+        return $this->hasMany(FinancialEntry::class);
+    }
 }

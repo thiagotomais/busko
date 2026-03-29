@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Driver;
 use App\Models\Guardian;
 use App\Models\Passenger;
+use App\Models\Tenant;
+use App\Models\TransportRoute;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -19,6 +22,35 @@ class PassengerManagementTest extends TestCase
 
         $manager = User::where('email', 'thiago@tomais')->firstOrFail();
         $guardian = Guardian::whereHas('user', fn ($query) => $query->where('email', 'guardian@test.com'))->firstOrFail();
+        $driver = Driver::whereHas('user', fn ($query) => $query->where('email', 'thiago@tomais'))->firstOrFail();
+        $idaRoute = TransportRoute::create([
+            'tenant_id' => $manager->tenant_id,
+            'driver_id' => $driver->id,
+            'name' => 'Rota Ida Tarde',
+            'direction' => 'ida',
+            'period' => 'tarde',
+            'vehicle_name' => 'Van Escolar 01',
+            'monday' => true,
+            'tuesday' => true,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'is_active' => true,
+        ]);
+        $voltaRoute = TransportRoute::create([
+            'tenant_id' => $manager->tenant_id,
+            'driver_id' => $driver->id,
+            'name' => 'Rota Volta Tarde',
+            'direction' => 'volta',
+            'period' => 'tarde',
+            'vehicle_name' => 'Van Escolar 02',
+            'monday' => true,
+            'tuesday' => true,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'is_active' => true,
+        ]);
         $token = 'passenger-create-token';
 
         $response = $this->actingAs($manager)
@@ -60,20 +92,36 @@ class PassengerManagementTest extends TestCase
                 'school_state' => 'SP',
                 'entry_time' => '13:00',
                 'exit_time' => '18:00',
+                'ida_route_id' => $idaRoute->id,
+                'volta_route_id' => $voltaRoute->id,
             ]);
 
         $response->assertRedirect(route('portal.passengers.index'));
         $response->assertSessionHas('success');
 
+        $passenger = Passenger::where('name', 'Aluno Teste')->firstOrFail();
+
         $this->assertDatabaseHas('passengers', [
+            'id' => $passenger->id,
             'guardian_id' => $guardian->id,
-            'name' => 'Aluno Teste',
             'service_type' => 'ida_volta',
             'period' => 'tarde',
             'residential_zip' => '01311200',
             'pickup_state' => 'SP',
             'dropoff_state' => 'SP',
             'school_name' => 'Colégio Exemplo',
+        ]);
+
+        $this->assertDatabaseHas('transport_route_passengers', [
+            'transport_route_id' => $idaRoute->id,
+            'passenger_id' => $passenger->id,
+            'stop_order' => 1,
+        ]);
+
+        $this->assertDatabaseHas('transport_route_passengers', [
+            'transport_route_id' => $voltaRoute->id,
+            'passenger_id' => $passenger->id,
+            'stop_order' => 1,
         ]);
     }
 
@@ -112,6 +160,21 @@ class PassengerManagementTest extends TestCase
 
         $manager = User::where('email', 'thiago@tomais')->firstOrFail();
         $guardian = Guardian::whereHas('user', fn ($query) => $query->where('email', 'guardian@test.com'))->firstOrFail();
+        $driver = Driver::whereHas('user', fn ($query) => $query->where('email', 'thiago@tomais'))->firstOrFail();
+
+        TransportRoute::create([
+            'tenant_id' => $manager->tenant_id,
+            'driver_id' => $driver->id,
+            'name' => 'Rota Ida Tarde',
+            'direction' => 'ida',
+            'period' => 'tarde',
+            'monday' => true,
+            'tuesday' => true,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'is_active' => true,
+        ]);
 
         $this->actingAs($manager)
             ->get(route('portal.passengers.create'))
@@ -125,6 +188,9 @@ class PassengerManagementTest extends TestCase
         $response->assertSee($guardian->cpf);
         $response->assertDontSee('Selecione...');
         $response->assertSee('type="hidden" id="guardian_id" name="guardian_id"', false);
+        $response->assertSee('Rotas Vinculadas');
+        $response->assertSee('Rota Ida Tarde');
+        $response->assertSee('Mensalidade Padrão (R$)');
     }
 
     public function test_passengers_index_does_not_expose_generic_create_action(): void
@@ -132,6 +198,7 @@ class PassengerManagementTest extends TestCase
         $this->seed();
 
         $manager = User::where('email', 'thiago@tomais')->firstOrFail();
+        Passenger::where('name', 'Pedro Passageiro')->firstOrFail()->update(['monthly_fee' => null]);
 
         $response = $this->actingAs($manager)
             ->get(route('portal.passengers.index'));
@@ -140,8 +207,40 @@ class PassengerManagementTest extends TestCase
         $response->assertDontSee('+ Novo Passageiro');
         $response->assertDontSee('Cadastrar Primeiro Passageiro');
         $response->assertSee('devem ser cadastrados a partir da tela de guardiões');
-        $response->assertSee('Visualizar Detalhes');
+        $response->assertSee('Detalhes');
         $response->assertSee('Editar');
+        $response->assertSee('Mensalidade');
+        $response->assertSee('Mensalidade pendente');
+        $response->assertSee('sem mensalidade padrão definida');
+    }
+
+    public function test_global_admin_sees_company_selector_before_passengers_list(): void
+    {
+        $this->seed();
+
+        $admin = User::where('email', 'admin@busko.com')->firstOrFail();
+
+        $response = $this->actingAs($admin)
+            ->get(route('portal.passengers.index'));
+
+        $response->assertOk();
+        $response->assertSee('Selecione uma empresa para continuar');
+        $response->assertSee('Abrir passageiros');
+    }
+
+    public function test_global_admin_can_open_passengers_list_using_company_uid(): void
+    {
+        $this->seed();
+
+        $admin = User::where('email', 'admin@busko.com')->firstOrFail();
+        $tenant = Tenant::where('slug', 'busko-transportes')->firstOrFail();
+
+        $response = $this->actingAs($admin)
+            ->get(route('portal.passengers.index', ['company' => $tenant->uid]));
+
+        $response->assertOk();
+        $response->assertSee('Lista de Passageiros');
+        $response->assertSee('Pedro Passageiro');
     }
 
     public function test_guardian_show_displays_passenger_listing(): void
@@ -150,6 +249,27 @@ class PassengerManagementTest extends TestCase
 
         $manager = User::where('email', 'thiago@tomais')->firstOrFail();
         $guardian = Guardian::whereHas('user', fn ($query) => $query->where('email', 'guardian@test.com'))->firstOrFail();
+        $driver = Driver::whereHas('user', fn ($query) => $query->where('email', 'thiago@tomais'))->firstOrFail();
+        $passenger = Passenger::where('name', 'Pedro Passageiro')->firstOrFail();
+        $passenger->update(['monthly_fee' => null]);
+        $idaRoute = TransportRoute::create([
+            'tenant_id' => $manager->tenant_id,
+            'driver_id' => $driver->id,
+            'name' => 'Rota Escolar Ida',
+            'direction' => 'ida',
+            'period' => 'tarde',
+            'monday' => true,
+            'tuesday' => true,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'is_active' => true,
+        ]);
+
+        $idaRoute->passengers()->attach($passenger->id, [
+            'tenant_id' => $manager->tenant_id,
+            'stop_order' => 7,
+        ]);
 
         $response = $this->actingAs($manager)
             ->get(route('portal.guardians.show', $guardian));
@@ -157,6 +277,10 @@ class PassengerManagementTest extends TestCase
         $response->assertOk();
         $response->assertSee('Pedro Passageiro');
         $response->assertSee('Editar Passageiro');
+        $response->assertSee('Rota Escolar Ida');
+        $response->assertSee('Ordem 7');
+        $response->assertSee('Mensalidade padrão: Não definida');
+        $response->assertSee('Mensalidade pendente');
     }
 
     public function test_company_manager_can_edit_passenger_from_list(): void
@@ -164,7 +288,39 @@ class PassengerManagementTest extends TestCase
         $this->seed();
 
         $manager = User::where('email', 'thiago@tomais')->firstOrFail();
+        $driver = Driver::whereHas('user', fn ($query) => $query->where('email', 'thiago@tomais'))->firstOrFail();
         $passenger = Passenger::where('name', 'Pedro Passageiro')->firstOrFail();
+        $idaRoute = TransportRoute::create([
+            'tenant_id' => $manager->tenant_id,
+            'driver_id' => $driver->id,
+            'name' => 'Rota Ida Atual',
+            'direction' => 'ida',
+            'period' => 'tarde',
+            'monday' => true,
+            'tuesday' => true,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'is_active' => true,
+        ]);
+        $voltaRoute = TransportRoute::create([
+            'tenant_id' => $manager->tenant_id,
+            'driver_id' => $driver->id,
+            'name' => 'Rota Volta Manha',
+            'direction' => 'volta',
+            'period' => 'manha',
+            'monday' => true,
+            'tuesday' => true,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'is_active' => true,
+        ]);
+
+        $idaRoute->passengers()->attach($passenger->id, [
+            'tenant_id' => $manager->tenant_id,
+            'stop_order' => 1,
+        ]);
         $token = 'passenger-update-token';
 
         $editResponse = $this->actingAs($manager)
@@ -173,6 +329,8 @@ class PassengerManagementTest extends TestCase
         $editResponse->assertOk();
         $editResponse->assertSee('Editar Passageiro');
         $editResponse->assertSee($passenger->name);
+        $editResponse->assertSee('Rota Ida Atual');
+        $editResponse->assertSee('Rota Volta Manha');
 
         $response = $this->actingAs($manager)
             ->withSession(['_token' => $token])
@@ -216,6 +374,7 @@ class PassengerManagementTest extends TestCase
                 'school_state' => 'SP',
                 'entry_time' => '07:00',
                 'exit_time' => '12:00',
+                'volta_route_id' => $voltaRoute->id,
             ]);
 
         $response->assertRedirect(route('portal.passengers.index'));
@@ -231,6 +390,17 @@ class PassengerManagementTest extends TestCase
             'school_name' => 'Escola Atualizada',
             'entry_time' => '07:00',
             'exit_time' => '12:00',
+        ]);
+
+        $this->assertDatabaseMissing('transport_route_passengers', [
+            'transport_route_id' => $idaRoute->id,
+            'passenger_id' => $passenger->id,
+        ]);
+
+        $this->assertDatabaseHas('transport_route_passengers', [
+            'transport_route_id' => $voltaRoute->id,
+            'passenger_id' => $passenger->id,
+            'stop_order' => 1,
         ]);
     }
 }

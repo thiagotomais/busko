@@ -3,10 +3,14 @@
 @php
     $passenger = $passenger ?? new \App\Models\Passenger();
     $isEditing = $passenger->exists;
-    $companyParams = request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [];
+    $companyParams = request()->filled('company')
+        ? ['company' => (string) request()->query('company')]
+        : (request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []);
     $formAction = $isEditing
         ? route('portal.passengers.update', array_merge(['passenger' => $passenger], $companyParams))
         : route('portal.passengers.store', $companyParams);
+    $assignedIdaRouteId = old('ida_route_id', $passenger->assignedRouteFor('ida')?->id);
+    $assignedVoltaRouteId = old('volta_route_id', $passenger->assignedRouteFor('volta')?->id);
 @endphp
 
 @section('title', ($isEditing ? 'Editar' : 'Cadastrar') . ' Passageiro - Busko')
@@ -102,6 +106,62 @@
                 @error('rg')
                     <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
                 @enderror
+            </div>
+
+            <div>
+                <label for="monthly_fee" class="block text-sm font-semibold text-gray-700 mb-2">Mensalidade Padrão (R$)</label>
+                <input type="number" id="monthly_fee" name="monthly_fee" value="{{ old('monthly_fee', $passenger->monthly_fee) }}" step="0.01" min="0.01" placeholder="Ex: 450.00" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('monthly_fee') border-red-500 @enderror">
+                @error('monthly_fee')
+                    <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
+                @enderror
+                <p class="text-xs text-gray-500 mt-1">Este valor será usado automaticamente na geração de mensalidades em lote.</p>
+            </div>
+        </div>
+
+        <div class="border rounded-lg p-4 space-y-4">
+            <div>
+                <h4 class="text-sm font-semibold text-gray-700 uppercase">Rotas Vinculadas</h4>
+                <p class="text-sm text-gray-600 mt-1">Defina separadamente a rota de ida e a rota de volta. A ordem das paradas continua sendo organizada na tela de rotas.</p>
+            </div>
+
+            <div id="ida_route_section" data-route-direction-section="ida" class="grid grid-cols-1 gap-2">
+                <label for="ida_route_id" class="block text-sm font-semibold text-gray-700">Rota de Ida</label>
+                <select id="ida_route_id" name="ida_route_id" data-route-select="ida" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('ida_route_id') border-red-500 @enderror">
+                    <option value="">Selecione uma rota de ida</option>
+                    @foreach($idaRoutes as $route)
+                        <option
+                            value="{{ $route->id }}"
+                            data-period="{{ $route->period }}"
+                            @selected((string) $assignedIdaRouteId === (string) $route->id)
+                        >
+                            {{ $route->name }} · {{ ucfirst($route->period) }} · {{ $route->driver?->user?->name ?? 'Sem motorista' }}{{ $route->is_active ? '' : ' · Inativa' }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('ida_route_id')
+                    <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
+                @enderror
+                <p class="text-xs text-gray-500" data-route-empty-message="ida">Nenhuma rota de ida disponível para o período selecionado.</p>
+            </div>
+
+            <div id="volta_route_section" data-route-direction-section="volta" class="grid grid-cols-1 gap-2">
+                <label for="volta_route_id" class="block text-sm font-semibold text-gray-700">Rota de Volta</label>
+                <select id="volta_route_id" name="volta_route_id" data-route-select="volta" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('volta_route_id') border-red-500 @enderror">
+                    <option value="">Selecione uma rota de volta</option>
+                    @foreach($voltaRoutes as $route)
+                        <option
+                            value="{{ $route->id }}"
+                            data-period="{{ $route->period }}"
+                            @selected((string) $assignedVoltaRouteId === (string) $route->id)
+                        >
+                            {{ $route->name }} · {{ ucfirst($route->period) }} · {{ $route->driver?->user?->name ?? 'Sem motorista' }}{{ $route->is_active ? '' : ' · Inativa' }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('volta_route_id')
+                    <span class="text-red-600 text-sm mt-1 block">{{ $message }}</span>
+                @enderror
+                <p class="text-xs text-gray-500" data-route-empty-message="volta">Nenhuma rota de volta disponível para o período selecionado.</p>
             </div>
         </div>
 
@@ -384,7 +444,7 @@
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
-            <a href="{{ route('portal.passengers.index', request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []) }}" class="px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+            <a href="{{ route('portal.passengers.index', $companyParams) }}" class="px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
             <button type="submit" class="px-5 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">{{ $isEditing ? 'Salvar Alterações' : 'Cadastrar Passageiro' }}</button>
         </div>
     </form>
@@ -436,6 +496,56 @@ function copyResidentialTo(targetPrefix) {
     if (feedback) feedback.textContent = 'Copiado do endereço residencial.';
 }
 
+function updatePassengerRouteSelectors() {
+    const period = document.getElementById('period')?.value;
+    const serviceType = document.querySelector('input[name="service_type"]:checked')?.value;
+    const directions = {
+        ida: serviceType === 'ida' || serviceType === 'ida_volta',
+        volta: serviceType === 'volta' || serviceType === 'ida_volta',
+    };
+
+    Object.entries(directions).forEach(([direction, enabled]) => {
+        const section = document.querySelector(`[data-route-direction-section="${direction}"]`);
+        const select = document.querySelector(`[data-route-select="${direction}"]`);
+        const emptyMessage = document.querySelector(`[data-route-empty-message="${direction}"]`);
+
+        if (!section || !select) {
+            return;
+        }
+
+        section.classList.toggle('hidden', !enabled);
+        select.disabled = !enabled;
+
+        let visibleOptions = 0;
+
+        Array.from(select.options).forEach((option, index) => {
+            if (index === 0) {
+                option.hidden = false;
+                option.disabled = false;
+                return;
+            }
+
+            const matchesPeriod = option.dataset.period === period;
+            option.hidden = !matchesPeriod;
+            option.disabled = !matchesPeriod;
+
+            if (matchesPeriod) {
+                visibleOptions += 1;
+            }
+        });
+
+        if (!enabled) {
+            select.value = '';
+        } else if (select.selectedOptions[0] && select.selectedOptions[0].hidden) {
+            select.value = '';
+        }
+
+        if (emptyMessage) {
+            emptyMessage.classList.toggle('hidden', !enabled || visibleOptions > 0);
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     ['residential', 'school', 'pickup', 'dropoff'].forEach(prefix => {
         const zipInput = document.getElementById(`${prefix}_zip`);
@@ -444,6 +554,13 @@ document.addEventListener('DOMContentLoaded', function () {
         zipInput.addEventListener('blur',  () => lookupCepFor(prefix));
         btn?.addEventListener('click', () => lookupCepFor(prefix));
     });
+
+    document.getElementById('period')?.addEventListener('change', updatePassengerRouteSelectors);
+    document.querySelectorAll('input[name="service_type"]').forEach((input) => {
+        input.addEventListener('change', updatePassengerRouteSelectors);
+    });
+
+    updatePassengerRouteSelectors();
 });
 </script>
 @endsection

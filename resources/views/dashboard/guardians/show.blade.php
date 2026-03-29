@@ -5,6 +5,11 @@
 @section('page-title', 'Detalhes do Guardião')
 
 @section('content')
+@php
+    $companyParams = request()->filled('company')
+        ? ['company' => (string) request()->query('company')]
+        : (request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []);
+@endphp
 @php($guardianUser = $guardian->user)
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Guardian Info -->
@@ -105,7 +110,7 @@
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-lg font-semibold text-gray-800">🚌 Passageiros</h4>
                 @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
-                    <a href="{{ route('portal.passengers.create', array_merge(['guardian_id' => $guardian->id], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" class="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+                    <a href="{{ route('portal.passengers.create', array_merge(['guardian_id' => $guardian->id], $companyParams)) }}" class="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
                         + Cadastrar Passageiro
                     </a>
                 @endif
@@ -113,18 +118,43 @@
             <p class="text-sm text-gray-600">
                 Total de passageiros vinculados a este guardião: <span class="font-semibold">{{ $guardian->passengers->count() }}</span>
             </p>
+            @if(($missingMonthlyFeeCount ?? 0) > 0)
+                <p class="text-sm text-amber-700 mt-2">
+                    Atenção: {{ $missingMonthlyFeeCount }} passageiro(s) sem mensalidade padrão definida.
+                </p>
+            @endif
 
             @if($guardian->passengers->count() > 0)
                 <div class="mt-4 space-y-3">
                     @foreach($guardian->passengers as $passenger)
+                        @php($idaRoute = $passenger->assignedRouteFor('ida'))
+                        @php($voltaRoute = $passenger->assignedRouteFor('volta'))
                         <div class="border border-gray-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div>
                                 <p class="font-medium text-gray-900">{{ $passenger->name }}</p>
                                 <p class="text-sm text-gray-600">RG: {{ $passenger->rg }} · Série: {{ $passenger->school_grade }}</p>
+                                @if($passenger->monthly_fee === null)
+                                    <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                        Mensalidade pendente
+                                    </span>
+                                @endif
                                 <p class="text-sm text-gray-600 mt-1">Período: {{ ucfirst($passenger->period) }} · Horários: {{ substr($passenger->entry_time, 0, 5) }} / {{ substr($passenger->exit_time, 0, 5) }}</p>
+                                <p class="text-sm text-gray-600 mt-1">Mensalidade padrão: {{ $passenger->monthly_fee ? 'R$ ' . number_format((float) $passenger->monthly_fee, 2, ',', '.') : 'Não definida' }}</p>
+                                <p class="text-sm text-gray-600 mt-1">
+                                    Rota de ida: {{ $idaRoute?->name ?? 'Nao vinculada' }}
+                                    @if($idaRoute?->pivot?->stop_order)
+                                        <span class="text-xs text-gray-500">(Ordem {{ $idaRoute->pivot->stop_order }})</span>
+                                    @endif
+                                </p>
+                                <p class="text-sm text-gray-600">
+                                    Rota de volta: {{ $voltaRoute?->name ?? 'Nao vinculada' }}
+                                    @if($voltaRoute?->pivot?->stop_order)
+                                        <span class="text-xs text-gray-500">(Ordem {{ $voltaRoute->pivot->stop_order }})</span>
+                                    @endif
+                                </p>
                             </div>
                             @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
-                                <a href="{{ route('portal.passengers.edit', array_merge(['passenger' => $passenger], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
+                                <a href="{{ route('portal.passengers.edit', array_merge(['passenger' => $passenger], $companyParams)) }}" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
                                     Editar Passageiro
                                 </a>
                             @endif

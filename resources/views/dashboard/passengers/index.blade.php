@@ -5,7 +5,19 @@
 @section('page-title', 'Passageiros')
 
 @section('content')
+@php
+    $companyParams = request()->filled('company')
+        ? ['company' => (string) request()->query('company')]
+        : (request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []);
+@endphp
 <div class="bg-white rounded-lg shadow">
+    @if(($missingMonthlyFeeCount ?? 0) > 0)
+        <div class="mx-6 mt-6 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+            <span class="font-semibold">Atenção:</span> existem {{ $missingMonthlyFeeCount }} passageiro(s) sem mensalidade padrão definida.
+            Isso pode gerar pendências na cobrança em lote.
+        </div>
+    @endif
+
     <div class="p-6 border-b border-gray-200">
         <div>
             <h3 class="text-xl font-semibold text-gray-800">Lista de Passageiros</h3>
@@ -18,12 +30,14 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Passageiro</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guardião</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serviço</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Período</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horários</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Passageiro</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guardião</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serviço</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Período</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mensalidade</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rotas</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horários</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -32,22 +46,54 @@
                             $serviceLabel = $passenger->service_type === 'ida'
                                 ? 'Ida'
                                 : ($passenger->service_type === 'volta' ? 'Volta' : 'Ida e Volta');
+                            $idaRoute = $passenger->assignedRouteFor('ida');
+                            $voltaRoute = $passenger->assignedRouteFor('volta');
                         @endphp
                         <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4">
+                            <td class="px-4 py-3">
                                 <p class="font-medium text-gray-900">{{ $passenger->name }}</p>
                                 <p class="text-xs text-gray-500">RG: {{ $passenger->rg }}</p>
+                                @if($passenger->monthly_fee === null)
+                                    <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                        Mensalidade pendente
+                                    </span>
+                                @endif
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700">{{ $passenger->guardian?->user?->name ?? '-' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700">{{ $serviceLabel }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 capitalize">{{ $passenger->period }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700">{{ substr($passenger->entry_time, 0, 5) }} / {{ substr($passenger->exit_time, 0, 5) }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700">
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ $passenger->guardian?->user?->name ?? '-' }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{{ $serviceLabel }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700 capitalize whitespace-nowrap">{{ $passenger->period }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                                @if($passenger->monthly_fee)
+                                    R$ {{ number_format((float) $passenger->monthly_fee, 2, ',', '.') }}
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-700">
+                                <div class="space-y-0.5 text-xs">
+                                    <p class="whitespace-nowrap">
+                                        <span class="font-semibold text-gray-500">I:</span>
+                                        {{ $idaRoute?->name ?? 'N/A' }}
+                                        @if($idaRoute?->pivot?->stop_order)
+                                            <span class="text-gray-400">#{{ $idaRoute->pivot->stop_order }}</span>
+                                        @endif
+                                    </p>
+                                    <p class="whitespace-nowrap">
+                                        <span class="font-semibold text-gray-500">V:</span>
+                                        {{ $voltaRoute?->name ?? 'N/A' }}
+                                        @if($voltaRoute?->pivot?->stop_order)
+                                            <span class="text-gray-400">#{{ $voltaRoute->pivot->stop_order }}</span>
+                                        @endif
+                                    </p>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{{ substr($passenger->entry_time, 0, 5) }} / {{ substr($passenger->exit_time, 0, 5) }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" onclick="document.getElementById('passenger-details-{{ $passenger->id }}').showModal()" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
-                                        Visualizar Detalhes
+                                        Detalhes
                                     </button>
-                                    <a href="{{ route('portal.passengers.edit', array_merge(['passenger' => $passenger], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" class="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+                                    <a href="{{ route('portal.passengers.edit', array_merge(['passenger' => $passenger], $companyParams)) }}" class="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
                                         Editar
                                     </a>
                                 </div>
@@ -63,6 +109,8 @@
                 $serviceLabel = $passenger->service_type === 'ida'
                     ? 'Ida'
                     : ($passenger->service_type === 'volta' ? 'Volta' : 'Ida e Volta');
+                $idaRoute = $passenger->assignedRouteFor('ida');
+                $voltaRoute = $passenger->assignedRouteFor('volta');
             @endphp
             <dialog id="passenger-details-{{ $passenger->id }}" class="backdrop:bg-gray-900/40 rounded-2xl p-0 w-full max-w-3xl">
                 <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -98,8 +146,41 @@
                                 <p class="font-medium">{{ $passenger->school_grade }}</p>
                             </div>
                             <div>
+                                <p class="text-gray-500">Mensalidade Padrão</p>
+                                @if($passenger->monthly_fee)
+                                    <p class="font-medium">R$ {{ number_format((float) $passenger->monthly_fee, 2, ',', '.') }}</p>
+                                @else
+                                    <p class="font-medium text-gray-500">Não definida</p>
+                                @endif
+                            </div>
+                            <div>
                                 <p class="text-gray-500">Horários</p>
                                 <p class="font-medium">{{ substr($passenger->entry_time, 0, 5) }} / {{ substr($passenger->exit_time, 0, 5) }}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="border border-gray-200 rounded-xl p-4">
+                                <h5 class="text-sm font-semibold text-gray-700 uppercase mb-2">Rota de Ida</h5>
+                                @if($idaRoute)
+                                    <p class="text-sm font-medium text-gray-900">{{ $idaRoute->name }}</p>
+                                    <p class="text-sm text-gray-700">Período: {{ ucfirst($idaRoute->period) }}</p>
+                                    <p class="text-sm text-gray-700">Motorista: {{ $idaRoute->driver?->user?->name ?? 'Não informado' }}</p>
+                                    <p class="text-sm text-gray-700">Ordem de parada: {{ $idaRoute->pivot->stop_order }}</p>
+                                @else
+                                    <p class="text-sm text-gray-500">Passageiro sem rota de ida vinculada.</p>
+                                @endif
+                            </div>
+                            <div class="border border-gray-200 rounded-xl p-4">
+                                <h5 class="text-sm font-semibold text-gray-700 uppercase mb-2">Rota de Volta</h5>
+                                @if($voltaRoute)
+                                    <p class="text-sm font-medium text-gray-900">{{ $voltaRoute->name }}</p>
+                                    <p class="text-sm text-gray-700">Período: {{ ucfirst($voltaRoute->period) }}</p>
+                                    <p class="text-sm text-gray-700">Motorista: {{ $voltaRoute->driver?->user?->name ?? 'Não informado' }}</p>
+                                    <p class="text-sm text-gray-700">Ordem de parada: {{ $voltaRoute->pivot->stop_order }}</p>
+                                @else
+                                    <p class="text-sm text-gray-500">Passageiro sem rota de volta vinculada.</p>
+                                @endif
                             </div>
                         </div>
 

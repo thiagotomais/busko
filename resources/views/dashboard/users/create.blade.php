@@ -5,18 +5,19 @@
 @section('page-title', 'Cadastro de Usuário')
 
 @section('content')
+@php
+    $companyParams = request()->filled('company')
+        ? ['company' => (string) request()->query('company')]
+        : (request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []);
+@endphp
 <div class="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
     <div class="mb-6">
         <h3 class="text-xl font-semibold text-gray-800">Novo Usuário</h3>
         <p class="text-sm text-gray-600 mt-1">Cadastre usuários da empresa e, para motoristas, opcionalmente marque como Gestor Empresa.</p>
     </div>
 
-    <form action="{{ route('portal.users.store') }}" method="POST" class="space-y-5">
+    <form action="{{ route('portal.users.store', $companyParams) }}" method="POST" class="space-y-5">
         @csrf
-
-        @if(request()->filled('company_id'))
-            <input type="hidden" name="company_id" value="{{ request()->integer('company_id') }}">
-        @endif
 
         <div>
             <label for="type" class="block text-sm font-semibold text-gray-700 mb-2">Tipo de Usuário</label>
@@ -24,8 +25,11 @@
                 <option value="">Selecione...</option>
                 <option value="driver" {{ old('type') === 'driver' ? 'selected' : '' }}>Motorista</option>
                 <option value="guardian" {{ old('type') === 'guardian' ? 'selected' : '' }}>Guardião</option>
+                @if($canCreateCompanyAdmin)
+                    <option value="company_admin" {{ old('type') === 'company_admin' ? 'selected' : '' }}>Administrador da Empresa</option>
+                @endif
                 @if($canCreateAdmin)
-                    <option value="admin" {{ old('type') === 'admin' ? 'selected' : '' }}>Administrador</option>
+                    <option value="admin" {{ old('type') === 'admin' ? 'selected' : '' }}>Administrador do Sistema</option>
                 @endif
             </select>
             @error('type')
@@ -110,7 +114,7 @@
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
-            <a href="{{ route('portal.users.index', request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []) }}" class="px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+            <a href="{{ route('portal.users.index', $companyParams) }}" class="px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
             <button type="submit" class="px-5 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Cadastrar Usuário</button>
         </div>
     </form>

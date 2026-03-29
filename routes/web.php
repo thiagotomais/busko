@@ -76,6 +76,27 @@ Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () 
         Route::patch('/{passenger}', [DashboardController::class, 'passengerUpdate'])->name('update');
     });
 
+    // Transport Routes Management
+    Route::prefix('transport-routes')->name('transport-routes.')->group(function () {
+        Route::get('/', [DashboardController::class, 'transportRoutes'])->name('index');
+        Route::get('/create', [DashboardController::class, 'transportRouteCreate'])->name('create');
+        Route::post('/', [DashboardController::class, 'transportRouteStore'])->name('store');
+        Route::get('/{transportRoute}', [DashboardController::class, 'transportRouteShow'])->name('show');
+        Route::get('/{transportRoute}/edit', [DashboardController::class, 'transportRouteEdit'])->name('edit');
+        Route::patch('/{transportRoute}', [DashboardController::class, 'transportRouteUpdate'])->name('update');
+    });
+
+    // Financial Management
+    Route::prefix('financial')->name('financial.')->group(function () {
+        Route::get('/', [DashboardController::class, 'financialEntries'])->name('index');
+        Route::get('/export', [DashboardController::class, 'financialEntriesExport'])->name('export');
+        Route::get('/create', [DashboardController::class, 'financialEntryCreate'])->name('create');
+        Route::post('/bulk', [DashboardController::class, 'financialEntryBulkStore'])->name('bulk-store');
+        Route::post('/', [DashboardController::class, 'financialEntryStore'])->name('store');
+        Route::post('/{financialEntry}/mark-paid', [DashboardController::class, 'financialEntryMarkPaid'])->name('mark-paid');
+        Route::post('/{financialEntry}/mark-pending', [DashboardController::class, 'financialEntryMarkPending'])->name('mark-pending');
+    });
+
     // Bank autocomplete API
     Route::get('/api/banks/search', [DashboardController::class, 'searchBanks'])->name('api.banks.search');
     Route::get('/api/cep/{cep}', [DashboardController::class, 'lookupCep'])->name('api.cep.lookup');

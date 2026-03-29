@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
     {
         // Create a tenant
         $tenant = Tenant::create([
+            'uid' => Str::uuid()->toString(),
             'name' => 'Busko Transportes',
             'slug' => 'busko-transportes',
             'is_active' => true,
@@ -102,6 +103,65 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
+        // Create company admin for Busko Transportes
+        User::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Gestor Busko',
+            'email' => 'gestor@busko.com',
+            'password' => Hash::make('gestor@busko'),
+            'type' => 'company_admin',
+            'is_active' => true,
+        ]);
+
+        // Extra tenants for filter testing
+        Tenant::create([
+            'uid'               => Str::uuid()->toString(),
+            'name'              => 'Alfa Escolar',
+            'slug'              => 'alfa-escolar',
+            'is_active'         => true,
+            'bank_code'         => '033',
+            'bank_branch'       => '0002',
+            'bank_account'      => '234567-8',
+            'bank_account_type' => 'corrente',
+            'pix_key'           => 'contato@alfaescolar.com.br',
+        ]);
+
+        Tenant::create([
+            'uid'               => Str::uuid()->toString(),
+            'name'              => 'Beta Transporte',
+            'slug'              => 'beta-transporte',
+            'is_active'         => true,
+            'bank_code'         => '104',
+            'bank_branch'       => '0003',
+            'bank_account'      => '345678-9',
+            'bank_account_type' => 'corrente',
+            'pix_key'           => 'financeiro@betatransporte.com.br',
+        ]);
+
+        Tenant::create([
+            'uid'               => Str::uuid()->toString(),
+            'name'              => 'Gama Mobilidade',
+            'slug'              => 'gama-mobilidade',
+            'is_active'         => true,
+            'bank_code'         => '237',
+            'bank_branch'       => '0004',
+            'bank_account'      => '456789-0',
+            'bank_account_type' => 'corrente',
+            'pix_key'           => 'ops@gamamobilidade.com.br',
+        ]);
+
+        Tenant::create([
+            'uid'               => Str::uuid()->toString(),
+            'name'              => 'Delta Van',
+            'slug'              => 'delta-van',
+            'is_active'         => true,
+            'bank_code'         => '341',
+            'bank_branch'       => '0005',
+            'bank_account'      => '567890-1',
+            'bank_account_type' => 'corrente',
+            'pix_key'           => 'pix@deltavan.com.br',
+        ]);
+
         // Associate driver and guardian
         DriverGuardian::create([
             'driver_id' => $driver->id,
@@ -149,10 +209,8 @@ class DatabaseSeeder extends Seeder
             'school_state' => 'SP',
             'entry_time' => '13:00',
             'exit_time' => '18:00',
+            'monthly_fee' => 450.00,
         ]);
 
-        // Create additional test data
-        User::factory(5)->create(['type' => 'driver']);
-        User::factory(5)->create(['type' => 'guardian']);
     }
 }

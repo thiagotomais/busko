@@ -19,12 +19,26 @@ class UserManagementLifecycleTest extends TestCase
         $tenant = Tenant::where('slug', 'busko-transportes')->firstOrFail();
 
         $response = $this->actingAs($admin)
-            ->get(route('portal.users.index', ['company_id' => $tenant->id]));
+            ->get(route('portal.users.index', ['company' => $tenant->uid]));
 
         $response->assertOk();
         $response->assertSee('Gestão de Usuários');
         $response->assertSee('thiago@tomais');
         $response->assertDontSee('admin@busko.com');
+    }
+
+    public function test_global_admin_sees_company_selector_before_users_list(): void
+    {
+        $this->seed();
+
+        $admin = User::where('email', 'admin@busko.com')->firstOrFail();
+
+        $response = $this->actingAs($admin)
+            ->get(route('portal.users.index'));
+
+        $response->assertOk();
+        $response->assertSee('Selecione uma empresa para continuar');
+        $response->assertSee('Abrir usuários');
     }
 
     public function test_authenticated_user_can_update_guardian_profile(): void
@@ -39,7 +53,7 @@ class UserManagementLifecycleTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->withSession(['_token' => $token])
-            ->patch(route('portal.users.update', ['user' => $guardian, 'company_id' => $tenant->id]), [
+            ->patch(route('portal.users.update', ['user' => $guardian, 'company' => $tenant->uid]), [
                 '_token' => $token,
                 'type' => 'guardian',
                 'name' => 'Maria Guardian Editada',
@@ -48,7 +62,7 @@ class UserManagementLifecycleTest extends TestCase
                 'primary_driver_id' => $driver->id,
             ]);
 
-        $response->assertRedirect(route('portal.users.index', ['company_id' => $tenant->id]));
+        $response->assertRedirect(route('portal.users.index', ['company' => $tenant->uid]));
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('users', [
@@ -74,11 +88,11 @@ class UserManagementLifecycleTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->withSession(['_token' => $token])
-            ->post(route('portal.users.toggle-status', ['user' => $driverUser, 'company_id' => $tenant->id]), [
+            ->post(route('portal.users.toggle-status', ['user' => $driverUser, 'company' => $tenant->uid]), [
                 '_token' => $token,
             ]);
 
-        $response->assertRedirect(route('portal.users.index', ['company_id' => $tenant->id]));
+        $response->assertRedirect(route('portal.users.index', ['company' => $tenant->uid]));
         $response->assertSessionHas('success');
 
         $this->assertFalse($driverUser->fresh()->is_active);
@@ -95,7 +109,7 @@ class UserManagementLifecycleTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->withSession(['_token' => $token])
-            ->patch(route('portal.users.update', ['user' => $driverUser, 'company_id' => $tenant->id]), [
+            ->patch(route('portal.users.update', ['user' => $driverUser, 'company' => $tenant->uid]), [
                 '_token' => $token,
                 'type' => 'guardian',
                 'name' => 'Thiago Guardian',
@@ -103,7 +117,7 @@ class UserManagementLifecycleTest extends TestCase
                 'cpf' => '52998224725',
             ]);
 
-        $response->assertRedirect(route('portal.users.index', ['company_id' => $tenant->id]));
+        $response->assertRedirect(route('portal.users.index', ['company' => $tenant->uid]));
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('users', [

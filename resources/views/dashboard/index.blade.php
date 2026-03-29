@@ -49,6 +49,23 @@
 </div>
 
 @if($tenant)
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-600 text-sm font-medium">Total a Receber</p>
+            <p class="text-2xl font-bold text-amber-700 mt-2">R$ {{ number_format((float) $stats['financial_receivable'], 2, ',', '.') }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-600 text-sm font-medium">Recebido no Mês</p>
+            <p class="text-2xl font-bold text-green-700 mt-2">R$ {{ number_format((float) $stats['financial_received_month'], 2, ',', '.') }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-600 text-sm font-medium">Valor Vencido</p>
+            <p class="text-2xl font-bold text-red-700 mt-2">R$ {{ number_format((float) $stats['financial_overdue'], 2, ',', '.') }}</p>
+        </div>
+    </div>
+@endif
+
+@if($tenant)
     <div class="bg-white rounded-lg shadow p-6 mb-8">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -71,7 +88,7 @@
 <!-- Quick Actions -->
 <div class="bg-white rounded-lg shadow p-6 mb-8">
     <h3 class="text-lg font-semibold text-gray-800 mb-4">Ações Rápidas</h3>
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
         <a href="{{ route('portal.drivers.index') }}" class="block p-4 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition">
             <p class="text-blue-600 font-semibold">📋 Gerenciar Motoristas</p>
             <p class="text-gray-600 text-sm">Ver e editar dados de motoristas</p>
@@ -95,9 +112,23 @@
         @endif
 
         @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+            <a href="{{ route('portal.transport-routes.index') }}" class="block p-4 border-2 border-rose-200 rounded-lg hover:border-rose-500 hover:bg-rose-50 transition">
+                <p class="text-rose-700 font-semibold">🗺️ Planejar Rotas</p>
+                <p class="text-gray-600 text-sm">Montar rotas por motorista, período e ordem de passageiros</p>
+            </a>
+        @endif
+
+        @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
             <a href="{{ route('portal.users.index') }}" class="block p-4 border-2 border-purple-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition">
                 <p class="text-purple-700 font-semibold">🧾 Gestão de Usuários</p>
                 <p class="text-gray-600 text-sm">Criar, editar e ativar/desativar usuários</p>
+            </a>
+        @endif
+
+        @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
+            <a href="{{ route('portal.financial.index') }}" class="block p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition">
+                <p class="text-emerald-700 font-semibold">💰 Contas a Receber</p>
+                <p class="text-gray-600 text-sm">Gerar mensalidades e controlar baixas de pagamento</p>
             </a>
         @endif
     </div>

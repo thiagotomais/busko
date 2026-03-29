@@ -5,6 +5,11 @@
 @section('page-title', 'Gestão de Usuários')
 
 @section('content')
+@php
+    $companyParams = request()->filled('company')
+        ? ['company' => (string) request()->query('company')]
+        : (request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []);
+@endphp
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <div>
@@ -14,7 +19,7 @@
             </span>
         </div>
 
-        <a href="{{ route('portal.users.create', request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []) }}" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm">
+        <a href="{{ route('portal.users.create', $companyParams) }}" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm">
             + Novo Usuário
         </a>
     </div>
@@ -36,9 +41,18 @@
                         <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $user->name }}</td>
                         <td class="px-6 py-4 text-sm text-gray-700">{{ $user->email }}</td>
                         <td class="px-6 py-4 text-sm text-gray-700">
-                            <span class="capitalize">{{ $user->type?->value ?? $user->type }}</span>
-                            @if(($user->type?->value ?? $user->type) === 'driver' && $user->is_company_manager)
-                                <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Gestor Empresa</span>
+                            @php
+                                $typeLabels = [
+                                    'driver'        => 'Motorista',
+                                    'guardian'      => 'Guardião',
+                                    'admin'         => 'Admin Sistema',
+                                    'company_admin' => 'Admin Empresa',
+                                ];
+                                $typeValue = $user->type?->value ?? $user->type;
+                            @endphp
+                            <span>{{ $typeLabels[$typeValue] ?? ucfirst($typeValue) }}</span>
+                            @if($typeValue === 'driver' && $user->is_company_manager)
+                                <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Gestor</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 text-sm">
@@ -48,10 +62,10 @@
                         </td>
                         <td class="px-6 py-4 text-sm">
                             <div class="flex items-center gap-3">
-                                <a href="{{ route('portal.users.edit', array_merge(['user' => $user], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" class="text-blue-600 hover:text-blue-800 font-medium">Editar</a>
+                                <a href="{{ route('portal.users.edit', array_merge(['user' => $user], $companyParams)) }}" class="text-blue-600 hover:text-blue-800 font-medium">Editar</a>
 
                                 @if((int) auth()->id() !== (int) $user->id)
-                                    <form action="{{ route('portal.users.toggle-status', array_merge(['user' => $user], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" method="POST">
+                                    <form action="{{ route('portal.users.toggle-status', array_merge(['user' => $user], $companyParams)) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="font-medium {{ $user->is_active ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800' }}">
                                             {{ $user->is_active ? 'Desativar' : 'Ativar' }}

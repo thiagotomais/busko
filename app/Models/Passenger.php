@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Passenger extends Model
 {
@@ -50,10 +52,12 @@ class Passenger extends Model
         'school_state',
         'entry_time',
         'exit_time',
+        'monthly_fee',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
+        'monthly_fee' => 'decimal:2',
     ];
 
     /**
@@ -70,5 +74,32 @@ class Passenger extends Model
     public function guardian(): BelongsTo
     {
         return $this->belongsTo(Guardian::class);
+    }
+
+    /**
+     * Get transport routes linked to this passenger.
+     */
+    public function transportRoutes(): BelongsToMany
+    {
+        return $this->belongsToMany(TransportRoute::class, 'transport_route_passengers')
+            ->withPivot(['tenant_id', 'stop_order'])
+            ->withTimestamps()
+            ->orderBy('transport_route_passengers.stop_order');
+    }
+
+    /**
+     * Get the assigned route for a specific direction.
+     */
+    public function assignedRouteFor(string $direction): ?TransportRoute
+    {
+        return $this->transportRoutes->firstWhere('direction', $direction);
+    }
+
+    /**
+     * Get financial entries linked to this passenger.
+     */
+    public function financialEntries(): HasMany
+    {
+        return $this->hasMany(FinancialEntry::class);
     }
 }

@@ -5,6 +5,11 @@
 @section('page-title', 'Guardiões')
 
 @section('content')
+@php
+    $companyParams = request()->filled('company')
+        ? ['company' => (string) request()->query('company')]
+        : (request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : []);
+@endphp
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <!-- Header -->
     <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -46,11 +51,11 @@
                         <td class="px-6 py-4 text-sm">
                             @if(!empty($guardian->slug))
                                 <div class="flex items-center gap-4">
-                                    <a href="{{ route('portal.guardians.show', $guardian) }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                                    <a href="{{ route('portal.guardians.show', array_merge(['guardian' => $guardian], $companyParams)) }}" class="text-blue-600 hover:text-blue-800 font-medium">
                                         Ver Detalhes →
                                     </a>
                                     @if(auth()->user()?->type === \App\Enums\UserType::ADMIN || (auth()->user()?->type === \App\Enums\UserType::DRIVER && auth()->user()?->is_company_manager))
-                                        <a href="{{ route('portal.passengers.create', array_merge(['guardian_id' => $guardian->id], request()->filled('company_id') ? ['company_id' => request()->integer('company_id')] : [])) }}" class="text-green-600 hover:text-green-800 font-medium">
+                                        <a href="{{ route('portal.passengers.create', array_merge(['guardian_id' => $guardian->id], $companyParams)) }}" class="text-green-600 hover:text-green-800 font-medium">
                                             Cadastrar Passageiro
                                         </a>
                                     @endif
